@@ -22,6 +22,10 @@
 		{
 			"Name": "EditorToolset",
 			"Enabled": true
+		},
+		{
+			"Name": "UnLua",
+			"Enabled": true
 		}
 	]
 }
