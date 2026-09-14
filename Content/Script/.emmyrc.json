@@ -1,0 +1,11 @@
+{
+  "runtime": {
+    "version": "Lua54"
+  },
+  "workspace": {
+    "library": [
+      "../../Plugins/UnLua/Content/IntelliSense",
+      "../../Plugins/UnLua/Content/Script"
+    ]
+  }
+}

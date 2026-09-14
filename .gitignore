@@ -18,6 +18,8 @@ Plugins/**/Intermediate/
 
 # JetBrains Rider / IDEA
 .idea/
+Content/Script/out/
+Content/Script/Debug/bin/
 
 # Compiled object files
 *.obj
