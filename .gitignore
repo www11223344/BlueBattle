@@ -1,0 +1,35 @@
+# Unreal Engine
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+Build/
+Plugins/**/Binaries/
+Plugins/**/Intermediate/
+
+# Visual Studio / Rider
+.vs/
+.vsconfig
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# JetBrains Rider / IDEA
+.idea/
+
+# Compiled object files
+*.obj
+*.o
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Logs & crashes (under Saved/ but listed if partially tracked)
+*.log
+
+# Editor per-user settings
+Config/DefaultEditorPerProjectUserSettings.ini

@@ -1,0 +1,73 @@
+title: 双人对战小游戏 - 虚幻引擎项目展示
+size: [1280, 720]
+theme:
+  colors:
+    primary: "#0EA5E9"
+    secondary: "#64748B"
+    accent: "#F59E0B"
+    background: "#0F172A"
+    text: "#F8FAFC"
+    card: "#1E293B"
+    border: "#334155"
+    highlight: "#38BDF8"
+    danger: "#EF4444"
+    success: "#22C55E"
+  textStyles:
+    title:
+      fontSize: 32
+      color: "$text"
+      fontFamily: "Liter, MiSans"
+      lineHeight: 1.2
+    subtitle:
+      fontSize: 22
+      color: "$primary"
+      fontFamily: "Liter, MiSans"
+      lineHeight: 1.3
+    body:
+      fontSize: 18
+      color: "$text"
+      fontFamily: "Liter, MiSans"
+      lineHeight: 1.6
+    caption:
+      fontSize: 14
+      color: "$secondary"
+      fontFamily: "Liter, MiSans"
+      lineHeight: 1.4
+    accent:
+      fontSize: 20
+      color: "$accent"
+      fontFamily: "Liter, MiSans"
+      lineHeight: 1.4
+  tableStyles:
+    default:
+      fontSize: 16
+      fontFamily: "Liter, MiSans"
+      headerFill: "$primary"
+      headerColor: "#FFFFFF"
+      headerBold: true
+      bodyFill: ["$card", "$background"]
+      bodyColor: "$text"
+      border:
+        style: solid
+        width: 1
+        color: "$border"
+pages:
+  - pages/cover.page
+  - pages/toc.page
+  - pages/chapter1.page
+  - pages/features.page
+  - pages/scene.page
+  - pages/chapter2.page
+  - pages/architecture.page
+  - pages/modules.page
+  - pages/raycast.page
+  - pages/chapter3.page
+  - pages/phong.page
+  - pages/bvh.page
+  - pages/chapter4.page
+  - pages/rendering.page
+  - pages/chapter5.page
+  - pages/animation.page
+  - pages/chapter6.page
+  - pages/learning.page
+  - pages/final.page
