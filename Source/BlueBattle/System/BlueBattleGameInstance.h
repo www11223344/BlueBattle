@@ -18,4 +18,6 @@ class BLUEBATTLE_API UBlueBattleGameInstance : public UCommonGameInstance
 
 public:
 	UBlueBattleGameInstance(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+
+	virtual void Init() override;
 };
