@@ -37,6 +37,32 @@ void ABlueBattleGameMode::BeginPlay()
 	{
 		ViewportClient->SetForceDisableSplitscreen(false);
 	}
+
+	if (bSingleLocalPlayer)
+	{
+		// 不在 BeginPlay 派发过程中销毁其他玩家的 PlayerController
+		GetWorldTimerManager().SetTimerForNextTick(this, &ThisClass::RemoveNonPrimaryLocalPlayers);
+	}
+}
+
+void ABlueBattleGameMode::RemoveNonPrimaryLocalPlayers()
+{
+	UGameInstance* GameInstance = GetGameInstance();
+	if (!GameInstance)
+	{
+		return;
+	}
+
+	const ULocalPlayer* PrimaryPlayer = GameInstance->GetFirstGamePlayer();
+	const TArray<ULocalPlayer*> LocalPlayers = GameInstance->GetLocalPlayers();
+	for (ULocalPlayer* LocalPlayer : LocalPlayers)
+	{
+		if (LocalPlayer && LocalPlayer != PrimaryPlayer)
+		{
+			UE_LOG(LogBlueBattle, Log, TEXT("Removing extra local player %s"), *GetNameSafe(LocalPlayer));
+			GameInstance->RemoveLocalPlayer(LocalPlayer);
+		}
+	}
 }
 
 void ABlueBattleGameMode::InitializeLocalPlayerUI(APlayerController* PlayerController)
@@ -85,16 +111,12 @@ void ABlueBattleGameMode::NotifyWarriorDied(int32 DeadPlayerIndex)
 void ABlueBattleGameMode::ShowMatchResult(int32 WinnerPlayerIndex)
 {
 	FText WinnerText;
-	FSlateBrush WinnerLogo;
+	UTexture2D* WinnerLogo = nullptr;
 	if (WinnerDisplays.IsValidIndex(WinnerPlayerIndex))
 	{
 		const FBlueBattleWinnerDisplay& Display = WinnerDisplays[WinnerPlayerIndex];
 		WinnerText = Display.WinnerText;
-		if (UTexture2D* Logo = Display.WinnerLogo.LoadSynchronous())
-		{
-			WinnerLogo.SetResourceObject(Logo);
-			WinnerLogo.ImageSize = FVector2D(Logo->GetSizeX(), Logo->GetSizeY());
-		}
+		WinnerLogo = Display.WinnerLogo.LoadSynchronous();
 	}
 
 	if (ABlueBattleGameState* BlueBattleGameState = GetGameState<ABlueBattleGameState>())

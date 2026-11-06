@@ -295,6 +295,28 @@ bool UBlueBattleWidgetEditorLibrary::AddViewModelBinding(UWidgetBlueprint* Widge
 	return true;
 }
 
+int32 UBlueBattleWidgetEditorLibrary::RemoveViewModelBindingsToWidget(UWidgetBlueprint* WidgetBlueprint, FName WidgetName)
+{
+	UMVVMEditorSubsystem* MVVMEditor = GEditor ? GEditor->GetEditorSubsystem<UMVVMEditorSubsystem>() : nullptr;
+	UMVVMBlueprintView* View = MVVMEditor && WidgetBlueprint ? MVVMEditor->GetView(WidgetBlueprint) : nullptr;
+	if (!View)
+	{
+		return 0;
+	}
+
+	int32 Removed = 0;
+	for (int32 Index = View->GetNumBindings() - 1; Index >= 0; --Index)
+	{
+		const FMVVMBlueprintViewBinding* Binding = View->GetBindingAt(Index);
+		if (Binding && Binding->DestinationPath.GetWidgetName() == WidgetName)
+		{
+			MVVMEditor->RemoveBinding(WidgetBlueprint, *Binding);
+			++Removed;
+		}
+	}
+	return Removed;
+}
+
 bool UBlueBattleWidgetEditorLibrary::SetViewModelResolver(UWidgetBlueprint* WidgetBlueprint, UClass* ViewModelClass, UClass* ResolverClass)
 {
 	UMVVMEditorSubsystem* MVVMEditor = GEditor ? GEditor->GetEditorSubsystem<UMVVMEditorSubsystem>() : nullptr;

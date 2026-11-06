@@ -3,9 +3,10 @@
 #pragma once
 
 #include "MVVMViewModelBase.h"
-#include "Styling/SlateBrush.h"
 
 #include "BlueBattleMatchResultViewModel.generated.h"
+
+class UTexture2D;
 
 /**
  * 对局结算 ViewModel（MVVM）：由 GameMode 在对局结束时写入胜者信息，结算界面绑定字段显示。
@@ -17,13 +18,13 @@ class BLUEBATTLE_API UBlueBattleMatchResultViewModel : public UMVVMViewModelBase
 	GENERATED_BODY()
 
 public:
-	void SetMatchResult(int32 InWinnerPlayerIndex, const FText& InWinnerText, const FSlateBrush& InWinnerLogo);
+	void SetMatchResult(int32 InWinnerPlayerIndex, const FText& InWinnerText, UTexture2D* InWinnerLogo);
 	void Reset();
 
 	bool IsMatchOver() const { return bMatchOver; }
 	int32 GetWinnerPlayerIndex() const { return WinnerPlayerIndex; }
 	const FText& GetWinnerText() const { return WinnerText; }
-	const FSlateBrush& GetWinnerLogo() const { return WinnerLogo; }
+	UTexture2D* GetWinnerLogo() const { return WinnerLogo; }
 
 protected:
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Getter = "IsMatchOver", Category = "Match")
@@ -36,6 +37,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Getter, Category = "Match")
 	FText WinnerText;
 
+	/** 只提供贴图，显示尺寸沿用结算界面里 Image 的笔刷设置 */
 	UPROPERTY(BlueprintReadOnly, FieldNotify, Getter, Category = "Match")
-	FSlateBrush WinnerLogo;
+	TObjectPtr<UTexture2D> WinnerLogo;
 };

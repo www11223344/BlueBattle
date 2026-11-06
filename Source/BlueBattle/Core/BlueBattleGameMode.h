@@ -61,6 +61,12 @@ protected:
 
 	void ShowMatchResult(int32 WinnerPlayerIndex);
 
+	void RemoveNonPrimaryLocalPlayers();
+
+	/** 只保留首个本地玩家（前端关卡用；对战关卡创建的 P2 回到菜单时移除） */
+	UPROPERTY(EditDefaultsOnly, Category = "Players")
+	bool bSingleLocalPlayer = false;
+
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSoftClassPtr<UCommonActivatableWidget> HUDLayoutClass;
 
