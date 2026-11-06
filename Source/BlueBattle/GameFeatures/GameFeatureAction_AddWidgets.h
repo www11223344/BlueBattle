@@ -10,7 +10,7 @@
 
 struct FComponentRequestHandle;
 
-USTRUCT()
+USTRUCT(BlueprintType)
 struct FBlueBattleHUDLayoutRequest
 {
 	GENERATED_BODY()
@@ -22,7 +22,7 @@ struct FBlueBattleHUDLayoutRequest
 	FGameplayTag LayerID;
 };
 
-USTRUCT()
+USTRUCT(BlueprintType)
 struct FBlueBattleHUDElementEntry
 {
 	GENERATED_BODY()
@@ -38,7 +38,7 @@ struct FBlueBattleHUDElementEntry
  * 每个本地玩家的 HUD Actor 就绪后，把 Layout 推入对应 UI 层，并把 Widgets 注册到 UIExtension 插槽
  * （对应 Lyra 的 UGameFeatureAction_AddWidgets）。
  */
-UCLASS(meta = (DisplayName = "Add Widgets"))
+UCLASS(BlueprintType, meta = (DisplayName = "Add Widgets"))
 class BLUEBATTLE_API UGameFeatureAction_AddWidgets final : public UGameFeatureAction_WorldActionBase
 {
 	GENERATED_BODY()

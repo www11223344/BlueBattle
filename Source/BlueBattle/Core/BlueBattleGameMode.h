@@ -93,7 +93,8 @@ private:
 	bool IsExperienceLoaded() const;
 
 	/** 让本地玩家数量与 Experience 一致（P2 回到菜单时移除，进入对战时创建） */
-	void ApplyNumLocalPlayers(int32 NumLocalPlayers);
+	void RemoveExtraLocalPlayers(int32 NumLocalPlayers);
+	void CreateMissingLocalPlayers(int32 NumLocalPlayers);
 
 	FTimerHandle MatchResultTimerHandle;
 };

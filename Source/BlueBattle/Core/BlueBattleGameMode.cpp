@@ -138,7 +138,7 @@ bool ABlueBattleGameMode::IsExperienceLoaded() const
 
 void ABlueBattleGameMode::OnExperienceLoaded(const UBlueBattleExperienceDefinition* CurrentExperience)
 {
-	ApplyNumLocalPlayers(CurrentExperience->NumLocalPlayers);
+	RemoveExtraLocalPlayers(CurrentExperience->NumLocalPlayers);
 
 	// 加载期间登录的玩家被推迟了生成，现在补上
 	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
@@ -149,9 +149,12 @@ void ABlueBattleGameMode::OnExperienceLoaded(const UBlueBattleExperienceDefiniti
 			RestartPlayer(PC);
 		}
 	}
+
+	// 已有玩家生成后再创建，新玩家登录时才能避开被占用的 PlayerStart
+	CreateMissingLocalPlayers(CurrentExperience->NumLocalPlayers);
 }
 
-void ABlueBattleGameMode::ApplyNumLocalPlayers(int32 NumLocalPlayers)
+void ABlueBattleGameMode::RemoveExtraLocalPlayers(int32 NumLocalPlayers)
 {
 	UGameInstance* GameInstance = GetGameInstance();
 	if (!GameInstance || GetNetMode() == NM_DedicatedServer)
@@ -177,6 +180,15 @@ void ABlueBattleGameMode::ApplyNumLocalPlayers(int32 NumLocalPlayers)
 
 		UE_LOG(LogBlueBattle, Log, TEXT("Removing extra local player %s"), *GetNameSafe(LocalPlayer));
 		GameInstance->RemoveLocalPlayer(LocalPlayer);
+	}
+}
+
+void ABlueBattleGameMode::CreateMissingLocalPlayers(int32 NumLocalPlayers)
+{
+	UGameInstance* GameInstance = GetGameInstance();
+	if (!GameInstance || GetNetMode() == NM_DedicatedServer)
+	{
+		return;
 	}
 
 	while (GameInstance->GetNumLocalPlayers() < NumLocalPlayers)

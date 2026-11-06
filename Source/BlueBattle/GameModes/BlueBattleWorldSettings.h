@@ -20,6 +20,6 @@ public:
 	FPrimaryAssetId GetDefaultGameplayExperience() const;
 
 protected:
-	UPROPERTY(EditDefaultsOnly, Category = "GameMode")
+	UPROPERTY(EditAnywhere, Category = "GameMode")
 	TSoftObjectPtr<UBlueBattleExperienceDefinition> DefaultGameplayExperience;
 };

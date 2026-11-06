@@ -11,7 +11,7 @@ class APlayerController;
 class UInputMappingContext;
 struct FComponentRequestHandle;
 
-USTRUCT()
+USTRUCT(BlueprintType)
 struct FBlueBattleInputMappingContextAndPriority
 {
 	GENERATED_BODY()
@@ -28,7 +28,7 @@ struct FBlueBattleInputMappingContextAndPriority
  * 在 HeroComponent 发出 BindInputsNow 时，把映射上下文加到该玩家的 EnhancedInput 子系统
  * （对应 Lyra 的 UGameFeatureAction_AddInputContextMapping，去掉了按键设置注册）。
  */
-UCLASS(meta = (DisplayName = "Add Input Mapping"))
+UCLASS(BlueprintType, meta = (DisplayName = "Add Input Mapping"))
 class BLUEBATTLE_API UGameFeatureAction_AddInputContextMapping final : public UGameFeatureAction_WorldActionBase
 {
 	GENERATED_BODY()
