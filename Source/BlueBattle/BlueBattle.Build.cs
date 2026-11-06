@@ -20,6 +20,7 @@ public class BlueBattle : ModuleRules
 			"EnhancedInput",
 			"GameplayTags",
 			"ModularGameplay",
+			"GameFeatures",
 			"UMG",
 			"CommonUI",
 			"CommonInput",

@@ -3,29 +3,53 @@
 #include "Core/BlueBattleGameMode.h"
 #include "BlueBattleGameplayTags.h"
 #include "BlueBattleLogChannels.h"
+#include "Characters/BlueBattlePawnData.h"
+#include "Characters/BlueBattlePawnExtensionComponent.h"
 #include "CommonActivatableWidget.h"
 #include "CommonUIExtensions.h"
 #include "Core/BlueBattleGameState.h"
+#include "Engine/AssetManager.h"
 #include "Engine/GameInstance.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/Texture2D.h"
+#include "GameModes/BlueBattleExperienceDefinition.h"
+#include "GameModes/BlueBattleExperienceManagerComponent.h"
+#include "GameModes/BlueBattleWorldSettings.h"
+#include "Kismet/GameplayStatics.h"
+#include "Misc/CommandLine.h"
 #include "Player/BlueBattlePlayerController.h"
 #include "Player/BlueBattlePlayerState.h"
 #include "TimerManager.h"
 #include "UI/BlueBattleHUD.h"
 #include "UI/ViewModels/BlueBattleMatchResultViewModel.h"
 
+#include UE_INLINE_GENERATED_CPP_BY_NAME(BlueBattleGameMode)
+
 ABlueBattleGameMode::ABlueBattleGameMode(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	// Pawn 仍由蓝图 GameMode 指定；蓝图子类中显式设置过的类不受这里影响。
 	GameStateClass = ABlueBattleGameState::StaticClass();
 	PlayerControllerClass = ABlueBattlePlayerController::StaticClass();
 	PlayerStateClass = ABlueBattlePlayerState::StaticClass();
 	HUDClass = ABlueBattleHUD::StaticClass();
+}
 
-	InitialScreenLayer = BlueBattleGameplayTags::UI_Layer_Menu;
+void ABlueBattleGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
+{
+	Super::InitGame(MapName, Options, ErrorMessage);
+
+	// WorldSettings 等在 InitGame 时还未就绪，下一帧再选定 Experience
+	GetWorld()->GetTimerManager().SetTimerForNextTick(this, &ThisClass::HandleMatchAssignmentIfNotExpectingOne);
+}
+
+void ABlueBattleGameMode::InitGameState()
+{
+	Super::InitGameState();
+
+	UBlueBattleExperienceManagerComponent* ExperienceComponent = GameState->FindComponentByClass<UBlueBattleExperienceManagerComponent>();
+	check(ExperienceComponent);
+	ExperienceComponent->CallOrRegister_OnExperienceLoaded(FOnBlueBattleExperienceLoaded::FDelegate::CreateUObject(this, &ThisClass::OnExperienceLoaded));
 }
 
 void ABlueBattleGameMode::BeginPlay()
@@ -37,56 +61,198 @@ void ABlueBattleGameMode::BeginPlay()
 	{
 		ViewportClient->SetForceDisableSplitscreen(false);
 	}
+}
 
-	if (bSingleLocalPlayer)
+void ABlueBattleGameMode::HandleMatchAssignmentIfNotExpectingOne()
+{
+	const FPrimaryAssetType ExperienceType(UBlueBattleExperienceDefinition::StaticClass()->GetFName());
+	FPrimaryAssetId ExperienceId;
+	FString ExperienceIdSource;
+
+	if (UGameplayStatics::HasOption(OptionsString, TEXT("Experience")))
 	{
-		// 不在 BeginPlay 派发过程中销毁其他玩家的 PlayerController
-		GetWorldTimerManager().SetTimerForNextTick(this, &ThisClass::RemoveNonPrimaryLocalPlayers);
+		const FString ExperienceFromOptions = UGameplayStatics::ParseOption(OptionsString, TEXT("Experience"));
+		ExperienceId = FPrimaryAssetId(ExperienceType, FName(*ExperienceFromOptions));
+		ExperienceIdSource = TEXT("OptionsString");
+	}
+
+	if (!ExperienceId.IsValid())
+	{
+		FString ExperienceFromCommandLine;
+		if (FParse::Value(FCommandLine::Get(), TEXT("Experience="), ExperienceFromCommandLine))
+		{
+			ExperienceId = FPrimaryAssetId::ParseTypeAndName(ExperienceFromCommandLine);
+			if (!ExperienceId.PrimaryAssetType.IsValid())
+			{
+				ExperienceId = FPrimaryAssetId(ExperienceType, FName(*ExperienceFromCommandLine));
+			}
+			ExperienceIdSource = TEXT("CommandLine");
+		}
+	}
+
+	if (!ExperienceId.IsValid())
+	{
+		if (const ABlueBattleWorldSettings* TypedWorldSettings = Cast<ABlueBattleWorldSettings>(GetWorldSettings()))
+		{
+			ExperienceId = TypedWorldSettings->GetDefaultGameplayExperience();
+			ExperienceIdSource = TEXT("WorldSettings");
+		}
+	}
+
+	UAssetManager& AssetManager = UAssetManager::Get();
+	if (ExperienceId.IsValid() && !AssetManager.GetPrimaryAssetPath(ExperienceId).IsValid())
+	{
+		UE_LOG(LogBlueBattleExperience, Error, TEXT("EXPERIENCE: Wanted to use %s but couldn't find it, falling back to the default"), *ExperienceId.ToString());
+		ExperienceId = FPrimaryAssetId();
+	}
+
+	if (!ExperienceId.IsValid() && !DefaultExperience.IsNull())
+	{
+		ExperienceId = AssetManager.GetPrimaryAssetIdForPath(DefaultExperience.ToSoftObjectPath());
+		ExperienceIdSource = TEXT("Default");
+	}
+
+	if (!ExperienceId.IsValid())
+	{
+		UE_LOG(LogBlueBattleExperience, Error, TEXT("EXPERIENCE: No experience found for %s, players will not spawn"), *GetNameSafe(GetWorld()));
+		return;
+	}
+
+	OnMatchAssignmentGiven(ExperienceId, ExperienceIdSource);
+}
+
+void ABlueBattleGameMode::OnMatchAssignmentGiven(FPrimaryAssetId ExperienceId, const FString& ExperienceIdSource)
+{
+	UE_LOG(LogBlueBattleExperience, Log, TEXT("Identified experience %s (Source: %s)"), *ExperienceId.ToString(), *ExperienceIdSource);
+
+	UBlueBattleExperienceManagerComponent* ExperienceComponent = GameState->FindComponentByClass<UBlueBattleExperienceManagerComponent>();
+	check(ExperienceComponent);
+	ExperienceComponent->SetCurrentExperience(ExperienceId);
+}
+
+bool ABlueBattleGameMode::IsExperienceLoaded() const
+{
+	const UBlueBattleExperienceManagerComponent* ExperienceComponent = GameState ? GameState->FindComponentByClass<UBlueBattleExperienceManagerComponent>() : nullptr;
+	return ExperienceComponent && ExperienceComponent->IsExperienceLoaded();
+}
+
+void ABlueBattleGameMode::OnExperienceLoaded(const UBlueBattleExperienceDefinition* CurrentExperience)
+{
+	ApplyNumLocalPlayers(CurrentExperience->NumLocalPlayers);
+
+	// 加载期间登录的玩家被推迟了生成，现在补上
+	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+	{
+		APlayerController* PC = Iterator->Get();
+		if (PC && PC->GetPawn() == nullptr && PlayerCanRestart(PC))
+		{
+			RestartPlayer(PC);
+		}
 	}
 }
 
-void ABlueBattleGameMode::RemoveNonPrimaryLocalPlayers()
+void ABlueBattleGameMode::ApplyNumLocalPlayers(int32 NumLocalPlayers)
 {
 	UGameInstance* GameInstance = GetGameInstance();
-	if (!GameInstance)
+	if (!GameInstance || GetNetMode() == NM_DedicatedServer)
 	{
 		return;
 	}
 
 	const ULocalPlayer* PrimaryPlayer = GameInstance->GetFirstGamePlayer();
 	const TArray<ULocalPlayer*> LocalPlayers = GameInstance->GetLocalPlayers();
+	int32 NumKept = PrimaryPlayer ? 1 : 0;
 	for (ULocalPlayer* LocalPlayer : LocalPlayers)
 	{
-		if (LocalPlayer && LocalPlayer != PrimaryPlayer)
+		if (!LocalPlayer || LocalPlayer == PrimaryPlayer)
 		{
-			UE_LOG(LogBlueBattle, Log, TEXT("Removing extra local player %s"), *GetNameSafe(LocalPlayer));
-			GameInstance->RemoveLocalPlayer(LocalPlayer);
+			continue;
+		}
+
+		if (NumKept < NumLocalPlayers)
+		{
+			++NumKept;
+			continue;
+		}
+
+		UE_LOG(LogBlueBattle, Log, TEXT("Removing extra local player %s"), *GetNameSafe(LocalPlayer));
+		GameInstance->RemoveLocalPlayer(LocalPlayer);
+	}
+
+	while (GameInstance->GetNumLocalPlayers() < NumLocalPlayers)
+	{
+		FString Error;
+		if (!GameInstance->CreateLocalPlayer(INDEX_NONE, Error, true))
+		{
+			UE_LOG(LogBlueBattle, Error, TEXT("Failed to create local player: %s"), *Error);
+			break;
 		}
 	}
 }
 
-void ABlueBattleGameMode::InitializeLocalPlayerUI(APlayerController* PlayerController)
+void ABlueBattleGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
 {
-	ULocalPlayer* LocalPlayer = PlayerController ? PlayerController->GetLocalPlayer() : nullptr;
-	if (!LocalPlayer)
+	// Experience 加载完成前不生成 Pawn（OnExperienceLoaded 会补上）
+	if (IsExperienceLoaded())
 	{
-		return;
+		Super::HandleStartingNewPlayer_Implementation(NewPlayer);
+	}
+}
+
+const UBlueBattlePawnData* ABlueBattleGameMode::GetPawnDataForController(const AController* InController) const
+{
+	if (!IsExperienceLoaded())
+	{
+		return nullptr;
 	}
 
-	if (TSubclassOf<UCommonActivatableWidget> HUDLayout = HUDLayoutClass.LoadSynchronous())
-	{
-		UCommonUIExtensions::PushContentToLayer_ForPlayer(LocalPlayer, BlueBattleGameplayTags::UI_Layer_Game, HUDLayout);
-	}
+	const UBlueBattleExperienceManagerComponent* ExperienceComponent = GameState->FindComponentByClass<UBlueBattleExperienceManagerComponent>();
+	return ExperienceComponent->GetCurrentExperienceChecked()->DefaultPawnData;
+}
 
-	const UGameInstance* GameInstance = GetGameInstance();
-	const bool bIsPrimaryPlayer = GameInstance && GameInstance->GetFirstGamePlayer() == LocalPlayer;
-	if (bIsPrimaryPlayer)
+UClass* ABlueBattleGameMode::GetDefaultPawnClassForController_Implementation(AController* InController)
+{
+	if (const UBlueBattlePawnData* PawnData = GetPawnDataForController(InController))
 	{
-		if (TSubclassOf<UCommonActivatableWidget> InitialScreen = InitialScreenClass.LoadSynchronous())
+		if (PawnData->PawnClass)
 		{
-			UCommonUIExtensions::PushContentToLayer_ForPlayer(LocalPlayer, InitialScreenLayer, InitialScreen);
+			return PawnData->PawnClass;
 		}
 	}
+
+	return Super::GetDefaultPawnClassForController_Implementation(InController);
+}
+
+APawn* ABlueBattleGameMode::SpawnDefaultPawnAtTransform_Implementation(AController* NewPlayer, const FTransform& SpawnTransform)
+{
+	FActorSpawnParameters SpawnInfo;
+	SpawnInfo.Instigator = GetInstigator();
+	SpawnInfo.ObjectFlags |= RF_Transient;
+	SpawnInfo.bDeferConstruction = true;
+
+	UClass* PawnClass = GetDefaultPawnClassForController(NewPlayer);
+	if (!PawnClass)
+	{
+		return nullptr;
+	}
+
+	APawn* SpawnedPawn = GetWorld()->SpawnActor<APawn>(PawnClass, SpawnTransform, SpawnInfo);
+	if (!SpawnedPawn)
+	{
+		UE_LOG(LogBlueBattle, Error, TEXT("Game mode was unable to spawn Pawn of class [%s] at [%s]."), *GetNameSafe(PawnClass), *SpawnTransform.ToHumanReadableString());
+		return nullptr;
+	}
+
+	if (UBlueBattlePawnExtensionComponent* PawnExtComp = UBlueBattlePawnExtensionComponent::FindPawnExtensionComponent(SpawnedPawn))
+	{
+		if (const UBlueBattlePawnData* PawnData = GetPawnDataForController(NewPlayer))
+		{
+			PawnExtComp->SetPawnData(PawnData);
+		}
+	}
+
+	SpawnedPawn->FinishSpawning(SpawnTransform);
+	return SpawnedPawn;
 }
 
 void ABlueBattleGameMode::NotifyWarriorDied(int32 DeadPlayerIndex)

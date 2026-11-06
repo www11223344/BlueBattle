@@ -3,12 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameplayTagContainer.h"
 #include "ModularGameMode.h"
 #include "BlueBattleGameMode.generated.h"
 
-class AWarriorCharacter;
-class APlayerController;
+class AController;
+class UBlueBattleExperienceDefinition;
+class UBlueBattlePawnData;
 class UCommonActivatableWidget;
 class UTexture2D;
 
@@ -29,10 +29,10 @@ struct FBlueBattleWinnerDisplay
 };
 
 /**
- * 本地双人对战 GameMode：负责监听角色死亡、判定胜负，并为每个本地玩家推送该关卡的 UI。
- *  - HUDLayoutClass：推到每个本地玩家的 UI.Layer.Game（局内 HUD 布局，处理 Esc 暂停菜单）
- *  - InitialScreenClass：推到首个本地玩家的 InitialScreenLayer（前端关卡的开场/主菜单）
- *  - MatchResultScreenClass：对局结束后推到首个本地玩家的 UI.Layer.Menu（结算界面）
+ * 项目 GameMode（对应 Lyra 的 ALyraGameMode，去掉了 GAS 与联机匹配部分）：
+ *  - 启动时选定 Experience（URL 选项 > 命令行 > WorldSettings > DefaultExperience），加载完成前不生成 Pawn
+ *  - Experience 加载后按其 NumLocalPlayers 增删本地玩家，Pawn 类与 PawnData 取自 Experience
+ *  - 监听角色死亡、判定胜负并推送结算界面
  */
 UCLASS()
 class BLUEBATTLE_API ABlueBattleGameMode : public AModularGameModeBase
@@ -41,6 +41,17 @@ class BLUEBATTLE_API ABlueBattleGameMode : public AModularGameModeBase
 
 public:
 	ABlueBattleGameMode(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+
+	//~ Begin AGameModeBase interface
+	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
+	virtual void InitGameState() override;
+	virtual UClass* GetDefaultPawnClassForController_Implementation(AController* InController) override;
+	virtual APawn* SpawnDefaultPawnAtTransform_Implementation(AController* NewPlayer, const FTransform& SpawnTransform) override;
+	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
+	//~ End AGameModeBase interface
+
+	UFUNCTION(BlueprintCallable, Category = "BlueBattle|Pawn")
+	const UBlueBattlePawnData* GetPawnDataForController(const AController* InController) const;
 
 	/** 对局结束事件（供结算 UI 订阅） */
 	UPROPERTY(BlueprintAssignable, Category = "Match")
@@ -53,28 +64,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Match")
 	bool IsMatchOver() const { return bMatchOver; }
 
-	/** 本地玩家的 PrimaryGameLayout 就绪后由 PlayerController 调用，推送本关卡的 UI */
-	void InitializeLocalPlayerUI(APlayerController* PlayerController);
-
 protected:
 	virtual void BeginPlay() override;
 
 	void ShowMatchResult(int32 WinnerPlayerIndex);
 
-	void RemoveNonPrimaryLocalPlayers();
-
-	/** 只保留首个本地玩家（前端关卡用；对战关卡创建的 P2 回到菜单时移除） */
-	UPROPERTY(EditDefaultsOnly, Category = "Players")
-	bool bSingleLocalPlayer = false;
-
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSoftClassPtr<UCommonActivatableWidget> HUDLayoutClass;
-
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSoftClassPtr<UCommonActivatableWidget> InitialScreenClass;
-
-	UPROPERTY(EditDefaultsOnly, Category = "UI", meta = (Categories = "UI.Layer"))
-	FGameplayTag InitialScreenLayer;
+	/** URL、命令行、WorldSettings 都未指定时使用的 Experience */
+	UPROPERTY(EditDefaultsOnly, Category = "Experience")
+	TSoftObjectPtr<UBlueBattleExperienceDefinition> DefaultExperience;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Match|UI")
 	TSoftClassPtr<UCommonActivatableWidget> MatchResultScreenClass;
@@ -90,5 +87,13 @@ protected:
 	bool bMatchOver = false;
 
 private:
+	void HandleMatchAssignmentIfNotExpectingOne();
+	void OnMatchAssignmentGiven(FPrimaryAssetId ExperienceId, const FString& ExperienceIdSource);
+	void OnExperienceLoaded(const UBlueBattleExperienceDefinition* CurrentExperience);
+	bool IsExperienceLoaded() const;
+
+	/** 让本地玩家数量与 Experience 一致（P2 回到菜单时移除，进入对战时创建） */
+	void ApplyNumLocalPlayers(int32 NumLocalPlayers);
+
 	FTimerHandle MatchResultTimerHandle;
 };

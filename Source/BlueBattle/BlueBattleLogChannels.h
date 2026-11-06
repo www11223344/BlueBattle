@@ -5,3 +5,4 @@
 #include "Logging/LogMacros.h"
 
 BLUEBATTLE_API DECLARE_LOG_CATEGORY_EXTERN(LogBlueBattle, Log, All);
+BLUEBATTLE_API DECLARE_LOG_CATEGORY_EXTERN(LogBlueBattleExperience, Log, All);

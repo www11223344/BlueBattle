@@ -3,3 +3,4 @@
 #include "BlueBattleLogChannels.h"
 
 DEFINE_LOG_CATEGORY(LogBlueBattle);
+DEFINE_LOG_CATEGORY(LogBlueBattleExperience);

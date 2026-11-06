@@ -11,6 +11,9 @@ class UAttributeComponent;
 class UCombatComponent;
 class UComboComponent;
 class UBlueBattleAttributeViewModel;
+class UBlueBattleHeroComponent;
+class UBlueBattlePawnExtensionComponent;
+struct FGameplayTag;
 
 /**
  * 格斗角色基类：整合属性、战斗、连招三大 C++ 组件。
@@ -41,6 +44,28 @@ public:
 	/** 爆气 / EX */
 	UFUNCTION(BlueprintCallable, Category = "Warrior|Combat")
 	void Burst();
+
+	/** HeroComponent 收到动作输入后调用，按输入标签分发到下面的 Input* 蓝图事件 */
+	void HandleInputAction(const FGameplayTag& InputTag);
+
+	/** 按移动输入（X = 右，Y = 前）旋转闪避方向组件，取绝对值较大的轴 */
+	void UpdateDodgeDirection(const FVector2D& MoveInput);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Warrior|Input")
+	void InputLightAttack();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Warrior|Input")
+	void InputHeavyAttack();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Warrior|Input")
+	void InputDodge();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Warrior|Input")
+	void InputBurst();
+
+	/** 按住期间每帧触发 */
+	UFUNCTION(BlueprintImplementableEvent, Category = "Warrior|Input")
+	void InputConsumeMP();
 
 	// ---- 供 AnimBP 读取的状态 ----
 
@@ -96,6 +121,21 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void PossessedBy(AController* NewController) override;
+	virtual void UnPossessed() override;
+	virtual void OnRep_Controller() override;
+	virtual void OnRep_PlayerState() override;
+	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Warrior|Components")
+	TObjectPtr<UBlueBattlePawnExtensionComponent> PawnExtComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Warrior|Components")
+	TObjectPtr<UBlueBattleHeroComponent> HeroComponent;
+
+	/** 闪避方向组件（蓝图组件树中的 SceneComponent）的名字 */
+	UPROPERTY(EditDefaultsOnly, Category = "Warrior|Combat")
+	FName DodgeDirectionComponentName = TEXT("闪避方向");
 
 	/** 属性组件 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Warrior|Components")
@@ -130,4 +170,7 @@ private:
 	void HandleDeath(AActor* Killer);
 
 	float LastDodgeTime = -100.f;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USceneComponent> DodgeDirectionComponent;
 };
