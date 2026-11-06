@@ -25,6 +25,10 @@ Content/Script/Debug/bin/
 *.obj
 *.o
 
+# Python
+__pycache__/
+*.pyc
+
 # OS
 Thumbs.db
 Desktop.ini

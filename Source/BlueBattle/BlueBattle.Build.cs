@@ -11,9 +11,37 @@ public class BlueBattle : ModuleRules
 		// 允许以模块根为基准的相对包含，例如 "Combat/AttributeComponent.h"
 		PublicIncludePaths.Add(ModuleDirectory);
 
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "UnLua" });
+		PublicDependencyModuleNames.AddRange(new string[]
+		{
+			"Core",
+			"CoreUObject",
+			"Engine",
+			"InputCore",
+			"EnhancedInput",
+			"GameplayTags",
+			"ModularGameplay",
+			"UMG",
+			"CommonUI",
+			"CommonInput",
+			"FieldNotification",
+			"ModelViewViewModel",
+			"ModularGameplayActors",
+			"CommonUser",
+			"CommonGame",
+			"UIExtension",
+			"GameplayMessageRuntime",
+			"AsyncMixin",
+			"UnLua"
+		});
 
-		PrivateDependencyModuleNames.AddRange(new string[] { "UMG", "Slate", "SlateCore" });
+		PrivateDependencyModuleNames.AddRange(new string[]
+		{
+			"Slate",
+			"SlateCore",
+			"ApplicationCore",
+			"DeveloperSettings",
+			"CommonLoadingScreen"
+		});
 
 		if (Target.bBuildEditor)
 		{

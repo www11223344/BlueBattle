@@ -1,10 +1,19 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Core/BlueBattleGameMode.h"
+#include "Core/BlueBattleGameState.h"
+#include "Player/BlueBattlePlayerController.h"
+#include "Player/BlueBattlePlayerState.h"
+#include "UI/BlueBattleHUD.h"
 
-ABlueBattleGameMode::ABlueBattleGameMode()
+ABlueBattleGameMode::ABlueBattleGameMode(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
 {
-	// 默认使用蓝图配置的 Pawn / Controller，这里不强制指定，保持与现有蓝图兼容。
+	// Pawn 仍由蓝图 GameMode 指定；蓝图子类中显式设置过的类不受这里影响。
+	GameStateClass = ABlueBattleGameState::StaticClass();
+	PlayerControllerClass = ABlueBattlePlayerController::StaticClass();
+	PlayerStateClass = ABlueBattlePlayerState::StaticClass();
+	HUDClass = ABlueBattleHUD::StaticClass();
 }
 
 void ABlueBattleGameMode::NotifyWarriorDied(int32 DeadPlayerIndex)

@@ -315,12 +315,17 @@ static const luaL_Reg FSoftObjectPtrLib[] =
     {nullptr, nullptr}
 };
 
+static void FSoftObjectPtr_Set(FSoftObjectPtr& Self, const UObject* Object)
+{
+    Self = Object;
+}
+
 BEGIN_EXPORT_CLASS(FSoftObjectPtr, const UObject*)
     ADD_CONST_FUNCTION_EX("IsValid", bool, IsValid)
     ADD_CONST_FUNCTION_EX("IsNull", bool, IsNull)
     ADD_CONST_FUNCTION_EX("IsPending", bool, IsPending)
     ADD_FUNCTION_EX("Reset", void, Reset)
-    ADD_FUNCTION_EX("Set", void, operator=, const UObject*)
+    ADD_EXTERNAL_FUNCTION_EX("Set", void, FSoftObjectPtr_Set, FSoftObjectPtr&, const UObject*)
     ADD_FUNCTION_EX("GetAssetName", FString, GetAssetName)
     ADD_FUNCTION_EX("GetLongPackageName", FString, GetLongPackageName)
     ADD_CONST_FUNCTION_EX("Get", UObject*, Get)

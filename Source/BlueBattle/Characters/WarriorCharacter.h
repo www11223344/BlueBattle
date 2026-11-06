@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Character.h"
+#include "ModularCharacter.h"
 #include "Combat/BlueBattleTypes.h"
 #include "WarriorCharacter.generated.h"
 
@@ -16,7 +16,7 @@ class UComboComponent;
  * BP_Warrior 应 Reparent 到本类，蓝图仅保留动画/特效/资源引用等表现层。
  */
 UCLASS()
-class BLUEBATTLE_API AWarriorCharacter : public ACharacter
+class BLUEBATTLE_API AWarriorCharacter : public AModularCharacter
 {
 	GENERATED_BODY()
 

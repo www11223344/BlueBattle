@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/GameModeBase.h"
+#include "ModularGameMode.h"
 #include "BlueBattleGameMode.generated.h"
 
 class AWarriorCharacter;
@@ -16,12 +16,12 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMatchEnded, int32, WinnerPlayerIn
  * 表现/UI（胜利结算界面）仍由蓝图订阅事件处理。
  */
 UCLASS()
-class BLUEBATTLE_API ABlueBattleGameMode : public AGameModeBase
+class BLUEBATTLE_API ABlueBattleGameMode : public AModularGameModeBase
 {
 	GENERATED_BODY()
 
 public:
-	ABlueBattleGameMode();
+	ABlueBattleGameMode(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 	/** 对局结束事件（供结算 UI 订阅） */
 	UPROPERTY(BlueprintAssignable, Category = "Match")
