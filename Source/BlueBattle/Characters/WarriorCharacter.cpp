@@ -26,11 +26,42 @@ AWarriorCharacter::AWarriorCharacter()
 	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
 }
 
+namespace
+{
+	/** BP_Warrior 资产里残留旧版原生子对象，与蓝图组件树里的 AttributeSystem/ComboSystem 同类；只保留蓝图组件 */
+	template <typename TComponent>
+	TComponent* FindBlueprintComponent(AActor* Actor)
+	{
+		TInlineComponentArray<TComponent*> Components(Actor);
+		TComponent* Found = nullptr;
+		for (TComponent* Component : Components)
+		{
+			if (Component->CreationMethod == EComponentCreationMethod::SimpleConstructionScript)
+			{
+				Found = Component;
+				break;
+			}
+		}
+		if (!Found)
+		{
+			return Components.Num() > 0 ? Components[0] : nullptr;
+		}
+		for (TComponent* Component : Components)
+		{
+			if (Component != Found)
+			{
+				Component->DestroyComponent();
+			}
+		}
+		return Found;
+	}
+}
+
 void AWarriorCharacter::BeginPlay()
 {
 	// 先于蓝图 BeginPlay 查找组件并建好 ViewModel，蓝图里创建的 Widget 也能拿到
-	AttributeComponent = FindComponentByClass<UAttributeComponent>();
-	ComboComponent = FindComponentByClass<UComboComponent>();
+	AttributeComponent = FindBlueprintComponent<UAttributeComponent>(this);
+	ComboComponent = FindBlueprintComponent<UComboComponent>(this);
 
 	AttributeViewModel = NewObject<UBlueBattleAttributeViewModel>(this);
 	AttributeViewModel->SetAttributeComponent(AttributeComponent);
