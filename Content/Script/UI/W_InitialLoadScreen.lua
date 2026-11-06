@@ -1,24 +1,19 @@
 --
--- DESCRIPTION
+-- 开场第一屏：显示 5 秒后切到第二屏
 --
--- @COMPANY **
--- @AUTHOR **
--- @DATE ${date} ${time}
---
+
+local UIFlow = require("UI.UIFlow")
 
 ---@type W_InitialLoadScreen_C
 local M = UnLua.Class()
 
---function M:Initialize(Initializer)
---end
+local DURATION = 5.0
 
---function M:PreConstruct(IsDesignTime)
---end
-
--- function M:Construct()
--- end
-
---function M:Tick(MyGeometry, InDeltaTime)
---end
+function M:BP_OnActivated()
+    UIFlow.RunAfter(self, DURATION, function()
+        UIFlow.Push(self, "Menu", UIFlow.Screens.InitialLoad2)
+        self:DeactivateWidget()
+    end)
+end
 
 return M
