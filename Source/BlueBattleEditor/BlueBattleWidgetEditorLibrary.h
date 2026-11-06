@@ -52,6 +52,25 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "BlueBattle|WidgetEditor")
 	static bool RenameWidget(UWidgetBlueprint* WidgetBlueprint, UWidget* Widget, FName NewName);
 
+	/**
+	 * 添加 MVVM 单向绑定：ViewModel 字段（属性或 FieldNotify 函数）→ 控件属性。
+	 * ViewModel 按类在 Viewmodels 面板中查找（需先 MVVMEditorSubsystem.add_view_model）。
+	 */
+	UFUNCTION(BlueprintCallable, Category = "BlueBattle|WidgetEditor")
+	static bool AddViewModelBinding(UWidgetBlueprint* WidgetBlueprint, UClass* ViewModelClass, FName ViewModelField, FName WidgetName, FName WidgetProperty);
+
+	/** 把 Viewmodels 面板中该类 ViewModel 的创建方式设为 Resolver */
+	UFUNCTION(BlueprintCallable, Category = "BlueBattle|WidgetEditor")
+	static bool SetViewModelResolver(UWidgetBlueprint* WidgetBlueprint, UClass* ViewModelClass, UClass* ResolverClass);
+
+	/** 列出旧式属性绑定，格式 "Widget.Property -> Function" */
+	UFUNCTION(BlueprintCallable, Category = "BlueBattle|WidgetEditor")
+	static TArray<FString> GetPropertyBindings(UWidgetBlueprint* WidgetBlueprint);
+
+	/** 移除旧式属性绑定；WidgetName 为 None 时移除全部，返回移除数量 */
+	UFUNCTION(BlueprintCallable, Category = "BlueBattle|WidgetEditor")
+	static int32 RemovePropertyBindings(UWidgetBlueprint* WidgetBlueprint, FName WidgetName);
+
 	/** 层级修改后标记蓝图结构变化（编译前调用） */
 	UFUNCTION(BlueprintCallable, Category = "BlueBattle|WidgetEditor")
 	static void MarkStructurallyModified(UWidgetBlueprint* WidgetBlueprint);

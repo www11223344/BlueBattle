@@ -6,7 +6,15 @@
 #include "Components/ContentWidget.h"
 #include "Components/PanelSlot.h"
 #include "Components/PanelWidget.h"
+#include "Editor.h"
 #include "Kismet2/BlueprintEditorUtils.h"
+#include "MVVMBlueprintView.h"
+#include "MVVMBlueprintViewBinding.h"
+#include "MVVMBlueprintViewModelContext.h"
+#include "MVVMEditorSubsystem.h"
+#include "MVVMPropertyPath.h"
+#include "Types/MVVMFieldVariant.h"
+#include "View/MVVMViewModelContextResolver.h"
 #include "UObject/Package.h"
 #include "WidgetBlueprint.h"
 
@@ -217,6 +225,126 @@ bool UBlueBattleWidgetEditorLibrary::RenameWidget(UWidgetBlueprint* WidgetBluepr
 	Widget->Rename(*NewName.ToString());
 	WidgetBlueprint->OnVariableRenamed(OldName, NewName);
 	return true;
+}
+
+namespace BlueBattleWidgetEditor
+{
+	static FMVVMBlueprintViewModelContext* FindViewModelContext(UMVVMBlueprintView* View, const UClass* ViewModelClass)
+	{
+		if (!View || !ViewModelClass)
+		{
+			return nullptr;
+		}
+		for (const FMVVMBlueprintViewModelContext& Context : View->GetViewModels())
+		{
+			if (Context.GetViewModelClass() == ViewModelClass)
+			{
+				return View->FindViewModel(Context.GetViewModelId());
+			}
+		}
+		return nullptr;
+	}
+
+	static TOptional<UE::MVVM::FMVVMConstFieldVariant> FindField(const UClass* Class, FName FieldName)
+	{
+		if (const UFunction* Function = Class->FindFunctionByName(FieldName))
+		{
+			return UE::MVVM::FMVVMConstFieldVariant(Function);
+		}
+		if (const FProperty* Property = FindFProperty<FProperty>(Class, FieldName))
+		{
+			return UE::MVVM::FMVVMConstFieldVariant(Property);
+		}
+		return {};
+	}
+}
+
+bool UBlueBattleWidgetEditorLibrary::AddViewModelBinding(UWidgetBlueprint* WidgetBlueprint, UClass* ViewModelClass, FName ViewModelField, FName WidgetName, FName WidgetProperty)
+{
+	UMVVMEditorSubsystem* MVVMEditor = GEditor ? GEditor->GetEditorSubsystem<UMVVMEditorSubsystem>() : nullptr;
+	UWidget* Widget = FindWidget(WidgetBlueprint, WidgetName);
+	if (!MVVMEditor || !Widget)
+	{
+		return false;
+	}
+
+	UMVVMBlueprintView* View = MVVMEditor->RequestView(WidgetBlueprint);
+	const FMVVMBlueprintViewModelContext* Context = BlueBattleWidgetEditor::FindViewModelContext(View, ViewModelClass);
+	const TOptional<UE::MVVM::FMVVMConstFieldVariant> SourceField = BlueBattleWidgetEditor::FindField(ViewModelClass, ViewModelField);
+	const TOptional<UE::MVVM::FMVVMConstFieldVariant> DestinationField = BlueBattleWidgetEditor::FindField(Widget->GetClass(), WidgetProperty);
+	if (!Context || !SourceField || !DestinationField)
+	{
+		return false;
+	}
+
+	Widget->bIsVariable = true;
+
+	FMVVMBlueprintPropertyPath SourcePath;
+	SourcePath.SetViewModelId(Context->GetViewModelId());
+	SourcePath.AppendPropertyPath(WidgetBlueprint, SourceField.GetValue());
+
+	FMVVMBlueprintPropertyPath DestinationPath;
+	DestinationPath.SetWidgetName(WidgetName);
+	DestinationPath.AppendPropertyPath(WidgetBlueprint, DestinationField.GetValue());
+
+	FMVVMBlueprintViewBinding& Binding = MVVMEditor->AddBinding(WidgetBlueprint);
+	Binding.BindingType = EMVVMBindingMode::OneWayToDestination;
+	MVVMEditor->SetSourcePathForBinding(WidgetBlueprint, Binding, SourcePath);
+	MVVMEditor->SetDestinationPathForBinding(WidgetBlueprint, Binding, DestinationPath, false);
+	return true;
+}
+
+bool UBlueBattleWidgetEditorLibrary::SetViewModelResolver(UWidgetBlueprint* WidgetBlueprint, UClass* ViewModelClass, UClass* ResolverClass)
+{
+	UMVVMEditorSubsystem* MVVMEditor = GEditor ? GEditor->GetEditorSubsystem<UMVVMEditorSubsystem>() : nullptr;
+	if (!MVVMEditor || !ResolverClass || !ResolverClass->IsChildOf<UMVVMViewModelContextResolver>())
+	{
+		return false;
+	}
+
+	UMVVMBlueprintView* View = MVVMEditor->RequestView(WidgetBlueprint);
+	FMVVMBlueprintViewModelContext* Context = BlueBattleWidgetEditor::FindViewModelContext(View, ViewModelClass);
+	if (!Context)
+	{
+		return false;
+	}
+
+	View->Modify();
+	Context->CreationType = EMVVMBlueprintViewModelContextCreationType::Resolver;
+	Context->Resolver = NewObject<UMVVMViewModelContextResolver>(View, ResolverClass, NAME_None, RF_Transactional);
+	return true;
+}
+
+TArray<FString> UBlueBattleWidgetEditorLibrary::GetPropertyBindings(UWidgetBlueprint* WidgetBlueprint)
+{
+	TArray<FString> Result;
+	if (WidgetBlueprint)
+	{
+		for (const FDelegateEditorBinding& Binding : WidgetBlueprint->Bindings)
+		{
+			const FString Target = Binding.SourcePath.IsEmpty() ? Binding.FunctionName.ToString() : Binding.SourcePath.GetDisplayText().ToString();
+			Result.Add(FString::Printf(TEXT("%s.%s -> %s"), *Binding.ObjectName, *Binding.PropertyName.ToString(), *Target));
+		}
+	}
+	return Result;
+}
+
+int32 UBlueBattleWidgetEditorLibrary::RemovePropertyBindings(UWidgetBlueprint* WidgetBlueprint, FName WidgetName)
+{
+	if (!WidgetBlueprint)
+	{
+		return 0;
+	}
+	WidgetBlueprint->Modify();
+	const int32 Removed = WidgetBlueprint->Bindings.RemoveAll([WidgetName](const FDelegateEditorBinding& Binding)
+	{
+		return WidgetName.IsNone() || Binding.ObjectName == WidgetName.ToString();
+	});
+	if (Removed > 0)
+	{
+		FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBlueprint);
+	}
+	return Removed;
 }
 
 void UBlueBattleWidgetEditorLibrary::MarkStructurallyModified(UWidgetBlueprint* WidgetBlueprint)

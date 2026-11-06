@@ -16,6 +16,10 @@ public class BlueBattleEditor : ModuleRules
 			"UMGEditor",
 			"UnrealEd",
 			"Kismet",
+			"FieldNotification",
+			"ModelViewViewModel",
+			"ModelViewViewModelBlueprint",
+			"ModelViewViewModelEditor",
 			"BlueBattle",
 		});
 	}
