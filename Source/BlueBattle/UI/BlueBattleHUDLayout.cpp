@@ -36,7 +36,10 @@ void UBlueBattleHUDLayout::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
 
-	RegisterUIActionBinding(FBindUIActionArgs(FUIActionTag::ConvertChecked(TAG_UI_ACTION_ESCAPE), false, FSimpleDelegate::CreateUObject(this, &ThisClass::HandleEscapeAction)));
+	FBindUIActionArgs EscapeActionArgs(FUIActionTag::ConvertChecked(TAG_UI_ACTION_ESCAPE), false, FSimpleDelegate::CreateUObject(this, &ThisClass::HandleEscapeAction));
+	// 绑定默认只在 Menu 模式响应，而 HUD 布局激活时的输入模式是 Game（All 也不匹配 Game）
+	EscapeActionArgs.InputMode = ECommonInputMode::Game;
+	RegisterUIActionBinding(EscapeActionArgs);
 
 	// If we can display a controller disconnect screen, then listen for the controller state change delegates
 	if (ShouldPlatformDisplayControllerDisconnectScreen())

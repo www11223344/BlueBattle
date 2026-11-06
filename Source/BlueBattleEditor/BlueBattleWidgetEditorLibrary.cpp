@@ -7,7 +7,10 @@
 #include "Components/PanelSlot.h"
 #include "Components/PanelWidget.h"
 #include "Editor.h"
+#include "Engine/GameViewportClient.h"
 #include "Framework/Application/SlateApplication.h"
+#include "GenericPlatform/GenericPlatformInputDeviceMapper.h"
+#include "InputKeyEventArgs.h"
 #include "Kismet2/BlueprintEditorUtils.h"
 #include "MVVMBlueprintView.h"
 #include "MVVMBlueprintViewBinding.h"
@@ -401,4 +404,34 @@ bool UBlueBattleWidgetEditorLibrary::SimulateMouseMoveToWidget(UWidget* Widget)
 	SlateApp.ProcessMouseMoveEvent(MouseEvent);
 
 	return Widget->IsHovered();
+}
+
+bool UBlueBattleWidgetEditorLibrary::SimulateKeyPress(FKey Key, int32 UserIndex)
+{
+	if (!Key.IsValid() || !FSlateApplication::IsInitialized())
+	{
+		return false;
+	}
+
+	FSlateApplication& SlateApp = FSlateApplication::Get();
+	const FModifierKeysState Modifiers = SlateApp.GetPlatformApplication()->GetModifierKeys();
+	const FKeyEvent KeyEvent(Key, Modifiers, UserIndex, false, 0, 0);
+	const bool bHandled = SlateApp.ProcessKeyDownEvent(KeyEvent);
+	SlateApp.ProcessKeyUpEvent(KeyEvent);
+	return bHandled;
+}
+
+bool UBlueBattleWidgetEditorLibrary::SimulateGameViewportKey(UObject* WorldContextObject, FKey Key)
+{
+	UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull) : nullptr;
+	UGameViewportClient* ViewportClient = World ? World->GetGameViewport() : nullptr;
+	if (!ViewportClient || !ViewportClient->Viewport || !Key.IsValid())
+	{
+		return false;
+	}
+
+	const FInputDeviceId Device = IPlatformInputDeviceMapper::Get().GetDefaultInputDevice();
+	const bool bHandled = ViewportClient->InputKey(FInputKeyEventArgs::CreateSimulated(Key, IE_Pressed, 1.f, -1, Device, false, ViewportClient->Viewport));
+	ViewportClient->InputKey(FInputKeyEventArgs::CreateSimulated(Key, IE_Released, 0.f, -1, Device, false, ViewportClient->Viewport));
+	return bHandled;
 }

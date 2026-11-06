@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "InputCoreTypes.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 
 #include "BlueBattleWidgetEditorLibrary.generated.h"
@@ -82,4 +83,12 @@ public:
 	/** 向 Slate 发送一次鼠标移动到运行中控件中心的事件（PIE 下测试悬停用），返回控件当前是否处于悬停 */
 	UFUNCTION(BlueprintCallable, Category = "BlueBattle|WidgetEditor")
 	static bool SimulateMouseMoveToWidget(UWidget* Widget);
+
+	/** 向 Slate 发送一次按键按下+抬起（PIE 下测试 UI 输入用），返回按下事件是否被处理 */
+	UFUNCTION(BlueprintCallable, Category = "BlueBattle|WidgetEditor")
+	static bool SimulateKeyPress(FKey Key, int32 UserIndex = 0);
+
+	/** 直接把按键按下+抬起交给该世界的 GameViewportClient（不依赖窗口焦点），返回按下是否被处理 */
+	UFUNCTION(BlueprintCallable, Category = "BlueBattle|WidgetEditor", meta = (WorldContext = "WorldContextObject"))
+	static bool SimulateGameViewportKey(UObject* WorldContextObject, FKey Key);
 };

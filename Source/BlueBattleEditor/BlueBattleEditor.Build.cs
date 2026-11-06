@@ -12,6 +12,7 @@ public class BlueBattleEditor : ModuleRules
 
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
+			"ApplicationCore",
 			"InputCore",
 			"Slate",
 			"SlateCore",
