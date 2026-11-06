@@ -93,6 +93,10 @@ private:
 	UPROPERTY(EditAnywhere)
 	TSoftClassPtr<UPrimaryGameLayout> LayoutClass;
 
+	// 分屏时每个玩家的根布局仍覆盖整个视口，而不是只覆盖该玩家的分屏区域
+	UPROPERTY(EditAnywhere)
+	bool bRootLayoutCoversWholeViewport = false;
+
 	UPROPERTY(Transient)
 	TArray<FRootViewportLayoutInfo> RootViewportLayouts;
 

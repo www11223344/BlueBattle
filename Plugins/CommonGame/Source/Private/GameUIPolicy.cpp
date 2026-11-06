@@ -126,7 +126,14 @@ void UGameUIPolicy::AddLayoutToViewport(UCommonLocalPlayer* LocalPlayer, UPrimar
 	UE_LOG(LogCommonGame, Log, TEXT("[%s] is adding player [%s]'s root layout [%s] to the viewport"), *GetName(), *GetNameSafe(LocalPlayer), *GetNameSafe(Layout));
 
 	Layout->SetPlayerContext(FLocalPlayerContext(LocalPlayer));
-	Layout->AddToPlayerScreen(1000);
+	if (bRootLayoutCoversWholeViewport)
+	{
+		Layout->AddToViewport(1000);
+	}
+	else
+	{
+		Layout->AddToPlayerScreen(1000);
+	}
 
 	OnRootLayoutAddedToViewport(LocalPlayer, Layout);
 }
