@@ -6,8 +6,18 @@
 
 #include "BlueBattleGameState.generated.h"
 
+class UBlueBattleMatchResultViewModel;
+
 UCLASS(Config = Game)
 class BLUEBATTLE_API ABlueBattleGameState : public AModularGameStateBase
 {
 	GENERATED_BODY()
+
+public:
+	UFUNCTION(BlueprintPure, Category = "Match")
+	UBlueBattleMatchResultViewModel* GetMatchResultViewModel();
+
+private:
+	UPROPERTY(Transient)
+	TObjectPtr<UBlueBattleMatchResultViewModel> MatchResultViewModel;
 };

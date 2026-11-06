@@ -2,7 +2,10 @@
 
 #include "BlueBattleActivatableWidget.h"
 
+#include "Blueprint/WidgetTree.h"
 #include "Editor/WidgetCompilerLog.h"
+#include "GameFramework/PlayerController.h"
+#include "Input/CommonUIInputTypes.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(BlueBattleActivatableWidget)
 
@@ -29,11 +32,74 @@ TOptional<FUIInputConfig> UBlueBattleActivatableWidget::GetDesiredInputConfig() 
 	}
 }
 
+UWidget* UBlueBattleActivatableWidget::NativeGetDesiredFocusTarget() const
+{
+	if (UWidget* BlueprintTarget = Super::NativeGetDesiredFocusTarget())
+	{
+		return BlueprintTarget;
+	}
+	return (!DesiredFocusWidgetName.IsNone() && WidgetTree) ? WidgetTree->FindWidget(DesiredFocusWidgetName) : nullptr;
+}
+
+void UBlueBattleActivatableWidget::NativeOnActivated()
+{
+	Super::NativeOnActivated();
+
+	if (bPauseGameWhileActive)
+	{
+		if (APlayerController* PlayerController = GetOwningPlayer(); PlayerController && !PlayerController->IsPaused())
+		{
+			bPausedGame = PlayerController->SetPause(true);
+		}
+	}
+}
+
+void UBlueBattleActivatableWidget::NativeOnDeactivated()
+{
+	if (bPausedGame)
+	{
+		bPausedGame = false;
+		if (APlayerController* PlayerController = GetOwningPlayer())
+		{
+			PlayerController->SetPause(false);
+		}
+	}
+
+	Super::NativeOnDeactivated();
+}
+
+void UBlueBattleActivatableWidget::ListenForUIAction(FDataTableRowHandle InputAction, FName ActionId, bool bShowInActionBar)
+{
+	FBindUIActionArgs Args(InputAction, bShowInActionBar, FSimpleDelegate::CreateWeakLambda(this, [this, ActionId]()
+	{
+		OnUIAction(ActionId);
+	}));
+	ListenedActionHandles.Add(RegisterUIActionBinding(Args));
+}
+
+void UBlueBattleActivatableWidget::StopListeningForUIActions()
+{
+	for (FUIActionBindingHandle& Handle : ListenedActionHandles)
+	{
+		Handle.Unregister();
+	}
+	ListenedActionHandles.Reset();
+}
+
 #if WITH_EDITOR
 
 void UBlueBattleActivatableWidget::ValidateCompiledWidgetTree(const UWidgetTree& BlueprintWidgetTree, class IWidgetCompilerLog& CompileLog) const
 {
 	Super::ValidateCompiledWidgetTree(BlueprintWidgetTree, CompileLog);
+
+	if (!DesiredFocusWidgetName.IsNone())
+	{
+		if (!BlueprintWidgetTree.FindWidget(DesiredFocusWidgetName))
+		{
+			CompileLog.Warning(FText::Format(LOCTEXT("DesiredFocusWidgetMissing", "DesiredFocusWidgetName '{0}' was not found in the widget tree."), FText::FromName(DesiredFocusWidgetName)));
+		}
+		return;
+	}
 
 	if (!GetClass()->IsFunctionImplementedInScript(GET_FUNCTION_NAME_CHECKED(UBlueBattleActivatableWidget, BP_GetDesiredFocusTarget)))
 	{

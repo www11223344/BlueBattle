@@ -1,10 +1,20 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Characters/WarriorCharacter.h"
+#include "Blueprint/UserWidget.h"
 #include "Combat/AttributeComponent.h"
 #include "Combat/CombatComponent.h"
 #include "Combat/ComboComponent.h"
+#include "Components/WidgetComponent.h"
+#include "Core/BlueBattleGameMode.h"
+#include "Engine/GameInstance.h"
+#include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
+#include "GameFramework/PlayerController.h"
+#include "MVVMSubsystem.h"
+#include "UI/ViewModels/BlueBattleAttributeViewModel.h"
+#include "View/MVVMView.h"
 
 AWarriorCharacter::AWarriorCharacter()
 {
@@ -18,11 +28,14 @@ AWarriorCharacter::AWarriorCharacter()
 
 void AWarriorCharacter::BeginPlay()
 {
-	Super::BeginPlay();
-
-	// 查找蓝图挂载的属性/连招组件（AttributeSystem / ComboSystem，已继承 C++ 基类）
+	// 先于蓝图 BeginPlay 查找组件并建好 ViewModel，蓝图里创建的 Widget 也能拿到
 	AttributeComponent = FindComponentByClass<UAttributeComponent>();
 	ComboComponent = FindComponentByClass<UComboComponent>();
+
+	AttributeViewModel = NewObject<UBlueBattleAttributeViewModel>(this);
+	AttributeViewModel->SetAttributeComponent(AttributeComponent);
+
+	Super::BeginPlay();
 
 	if (ComboComponent)
 	{
@@ -36,6 +49,57 @@ void AWarriorCharacter::BeginPlay()
 	{
 		AttributeComponent->OnDeath.AddDynamic(this, &AWarriorCharacter::HandleDeath);
 	}
+
+	BindAttributeViewModelToWidgetComponents();
+}
+
+void AWarriorCharacter::BindAttributeViewModelToWidgetComponents()
+{
+	if (!AttributeViewModel)
+	{
+		return;
+	}
+
+	TInlineComponentArray<UWidgetComponent*> WidgetComponents(this);
+	for (UWidgetComponent* WidgetComponent : WidgetComponents)
+	{
+		if (!WidgetComponent->GetUserWidgetObject())
+		{
+			WidgetComponent->InitWidget();
+		}
+
+		if (UMVVMView* View = UMVVMSubsystem::GetViewFromUserWidget(WidgetComponent->GetUserWidgetObject()))
+		{
+			View->SetViewModelByClass(AttributeViewModel);
+		}
+	}
+}
+
+int32 AWarriorCharacter::GetPlayerIndex() const
+{
+	if (const APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+	{
+		const UGameInstance* GameInstance = GetGameInstance();
+		const ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer();
+		if (GameInstance && LocalPlayer)
+		{
+			const int32 Index = GameInstance->GetLocalPlayers().IndexOfByKey(LocalPlayer);
+			if (Index != INDEX_NONE)
+			{
+				return Index;
+			}
+		}
+	}
+
+	int32 Index = 0;
+	for (TActorIterator<AWarriorCharacter> It(GetWorld()); It; ++It, ++Index)
+	{
+		if (*It == this)
+		{
+			return Index;
+		}
+	}
+	return INDEX_NONE;
 }
 
 void AWarriorCharacter::LightAttack()
@@ -113,4 +177,9 @@ void AWarriorCharacter::HandleHitTarget(AActor* HitActor, float DamageDealt, con
 void AWarriorCharacter::HandleDeath(AActor* Killer)
 {
 	OnDeathFeedback(Killer);
+
+	if (ABlueBattleGameMode* GameMode = GetWorld()->GetAuthGameMode<ABlueBattleGameMode>())
+	{
+		GameMode->NotifyWarriorDied(GetPlayerIndex());
+	}
 }

@@ -17,6 +17,7 @@ void UAttributeComponent::BeginPlay()
 	MP = MaxMP;
 	EnergyValue = MaxEnergyValue;
 	IsDead = false;
+	bDeathBroadcast = false;
 	CanEX = MaxEnergyValue > 0.f && EnergyValue >= MaxEnergyValue * 0.5f;
 
 	BroadcastAll();
@@ -26,45 +27,80 @@ void UAttributeComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	if (IsDead)
+	if (!IsDead)
 	{
-		return;
+		// 魔法值向上限匀速回复
+		MP = FMath::FInterpConstantTo(MP, MaxMP, DeltaTime, MPRegenSpeed);
+
+		// 能量值向 0 匀速衰减
+		EnergyValue = FMath::FInterpConstantTo(EnergyValue, 0.f, DeltaTime, EnergyValueDecaySpeed);
+
+		// 能量达到一半即可释放爆气/EX
+		CanEX = MaxEnergyValue > 0.f && EnergyValue >= MaxEnergyValue * 0.5f;
 	}
 
-	const float OldMP = MP;
-	const float OldEnergyValue = EnergyValue;
+	SyncChangesFromDirectWrites();
+}
 
-	// 魔法值向上限匀速回复
-	MP = FMath::FInterpConstantTo(MP, MaxMP, DeltaTime, MPRegenSpeed);
-
-	// 能量值向 0 匀速衰减
-	EnergyValue = FMath::FInterpConstantTo(EnergyValue, 0.f, DeltaTime, EnergyValueDecaySpeed);
-
-	// 能量达到一半即可释放爆气/EX
-	CanEX = MaxEnergyValue > 0.f && EnergyValue >= MaxEnergyValue * 0.5f;
-
-	if (!FMath::IsNearlyEqual(OldMP, MP))
+void UAttributeComponent::SyncChangesFromDirectWrites()
+{
+	if (!FMath::IsNearlyEqual(LastBroadcastHP, HP) || !FMath::IsNearlyEqual(LastBroadcastMaxHP, MaxHP))
 	{
-		OnMPChanged.Broadcast(MP, MaxMP, MaxMP > 0.f ? MP / MaxMP : 0.f);
+		BroadcastHP();
 	}
-	if (!FMath::IsNearlyEqual(OldEnergyValue, EnergyValue))
+	if (!FMath::IsNearlyEqual(LastBroadcastMP, MP) || !FMath::IsNearlyEqual(LastBroadcastMaxMP, MaxMP))
 	{
-		OnEnergyValueChanged.Broadcast(EnergyValue, MaxEnergyValue, MaxEnergyValue > 0.f ? EnergyValue / MaxEnergyValue : 0.f);
+		BroadcastMP();
+	}
+	if (!FMath::IsNearlyEqual(LastBroadcastEnergyValue, EnergyValue) || !FMath::IsNearlyEqual(LastBroadcastMaxEnergyValue, MaxEnergyValue))
+	{
+		CanEX = MaxEnergyValue > 0.f && EnergyValue >= MaxEnergyValue * 0.5f;
+		BroadcastEnergyValue();
 	}
 
-	// 死亡判定：HP<=0
-	if (HP <= 0.f && !IsDead)
+	// 死亡判定：HP<=0，或蓝图已直接置 IsDead
+	if (HP <= 0.f || IsDead)
 	{
-		IsDead = true;
-		OnDeath.Broadcast(nullptr);
+		BroadcastDeathOnce(nullptr);
+	}
+}
+
+void UAttributeComponent::BroadcastHP()
+{
+	LastBroadcastHP = HP;
+	LastBroadcastMaxHP = MaxHP;
+	OnHPChanged.Broadcast(HP, MaxHP, GetHPPercent());
+}
+
+void UAttributeComponent::BroadcastMP()
+{
+	LastBroadcastMP = MP;
+	LastBroadcastMaxMP = MaxMP;
+	OnMPChanged.Broadcast(MP, MaxMP, MaxMP > 0.f ? MP / MaxMP : 0.f);
+}
+
+void UAttributeComponent::BroadcastEnergyValue()
+{
+	LastBroadcastEnergyValue = EnergyValue;
+	LastBroadcastMaxEnergyValue = MaxEnergyValue;
+	OnEnergyValueChanged.Broadcast(EnergyValue, MaxEnergyValue, MaxEnergyValue > 0.f ? EnergyValue / MaxEnergyValue : 0.f);
+}
+
+void UAttributeComponent::BroadcastDeathOnce(AActor* Killer)
+{
+	IsDead = true;
+	if (!bDeathBroadcast)
+	{
+		bDeathBroadcast = true;
+		OnDeath.Broadcast(Killer);
 	}
 }
 
 void UAttributeComponent::BroadcastAll()
 {
-	OnHPChanged.Broadcast(HP, MaxHP, GetHPPercent());
-	OnMPChanged.Broadcast(MP, MaxMP, MaxMP > 0.f ? MP / MaxMP : 0.f);
-	OnEnergyValueChanged.Broadcast(EnergyValue, MaxEnergyValue, MaxEnergyValue > 0.f ? EnergyValue / MaxEnergyValue : 0.f);
+	BroadcastHP();
+	BroadcastMP();
+	BroadcastEnergyValue();
 }
 
 float UAttributeComponent::GetHPPercent() const
@@ -84,12 +120,11 @@ float UAttributeComponent::ApplyDamage(float RawDamage, AActor* DamageCauser)
 	const float OldHP = HP;
 	HP = FMath::Clamp(HP - FinalDamage, 0.f, MaxHP);
 
-	OnHPChanged.Broadcast(HP, MaxHP, GetHPPercent());
+	BroadcastHP();
 
-	if (HP <= 0.f && !IsDead)
+	if (HP <= 0.f)
 	{
-		IsDead = true;
-		OnDeath.Broadcast(DamageCauser);
+		BroadcastDeathOnce(DamageCauser);
 	}
 
 	return OldHP - HP;
@@ -103,7 +138,7 @@ void UAttributeComponent::Heal(float Amount)
 	}
 
 	HP = FMath::Clamp(HP + Amount, 0.f, MaxHP);
-	OnHPChanged.Broadcast(HP, MaxHP, GetHPPercent());
+	BroadcastHP();
 }
 
 void UAttributeComponent::ConsumeMP(float Cost)
@@ -114,7 +149,7 @@ void UAttributeComponent::ConsumeMP(float Cost)
 	}
 
 	MP = FMath::Clamp(MP - Cost, 0.f, MaxMP);
-	OnMPChanged.Broadcast(MP, MaxMP, MaxMP > 0.f ? MP / MaxMP : 0.f);
+	BroadcastMP();
 }
 
 bool UAttributeComponent::ConsumeEnergyValue(float Cost)
@@ -130,7 +165,7 @@ bool UAttributeComponent::ConsumeEnergyValue(float Cost)
 
 	EnergyValue = FMath::Clamp(EnergyValue - Cost, 0.f, MaxEnergyValue);
 	CanEX = MaxEnergyValue > 0.f && EnergyValue >= MaxEnergyValue * 0.5f;
-	OnEnergyValueChanged.Broadcast(EnergyValue, MaxEnergyValue, MaxEnergyValue > 0.f ? EnergyValue / MaxEnergyValue : 0.f);
+	BroadcastEnergyValue();
 	return true;
 }
 
@@ -143,5 +178,5 @@ void UAttributeComponent::AddEnergyValue(float Amount)
 
 	EnergyValue = FMath::Clamp(EnergyValue + Amount, 0.f, MaxEnergyValue);
 	CanEX = MaxEnergyValue > 0.f && EnergyValue >= MaxEnergyValue * 0.5f;
-	OnEnergyValueChanged.Broadcast(EnergyValue, MaxEnergyValue, MaxEnergyValue > 0.f ? EnergyValue / MaxEnergyValue : 0.f);
+	BroadcastEnergyValue();
 }

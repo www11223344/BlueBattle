@@ -141,6 +141,15 @@ protected:
 	/** 广播当前三条资源给 UI（初始化/变化时调用） */
 	void BroadcastAll();
 
+	void BroadcastHP();
+	void BroadcastMP();
+	void BroadcastEnergyValue();
+
+	/** 蓝图会直接写 HP/MP/EnergyValue/IsDead 而不经过上面的原子操作，每帧比对上次广播值补发事件。 */
+	void SyncChangesFromDirectWrites();
+
+	void BroadcastDeathOnce(AActor* Killer);
+
 	/** 魔法值每秒回复速度 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attributes|Regen")
 	float MPRegenSpeed = 10.f;
@@ -148,5 +157,13 @@ protected:
 	/** 能量值每秒衰减速度（回落到 0） */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attributes|Regen")
 	float EnergyValueDecaySpeed = 5.f;
-	
+
+private:
+	double LastBroadcastHP = -1.0;
+	double LastBroadcastMaxHP = -1.0;
+	double LastBroadcastMP = -1.0;
+	double LastBroadcastMaxMP = -1.0;
+	double LastBroadcastEnergyValue = -1.0;
+	double LastBroadcastMaxEnergyValue = -1.0;
+	bool bDeathBroadcast = false;
 };

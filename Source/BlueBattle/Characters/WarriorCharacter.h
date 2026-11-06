@@ -10,6 +10,7 @@
 class UAttributeComponent;
 class UCombatComponent;
 class UComboComponent;
+class UBlueBattleAttributeViewModel;
 
 /**
  * 格斗角色基类：整合属性、战斗、连招三大 C++ 组件。
@@ -63,6 +64,18 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Warrior|Components")
 	UComboComponent* GetComboComponent() const { return ComboComponent; }
 
+	/** 本角色的属性 ViewModel（头顶血条等 WidgetComponent 的 MVVM View 共享） */
+	UFUNCTION(BlueprintPure, Category = "Warrior|UI")
+	UBlueBattleAttributeViewModel* GetAttributeViewModel() const { return AttributeViewModel; }
+
+	/** 把属性 ViewModel 注入到本角色所有 WidgetComponent 的 Widget（蓝图替换 Widget 后可再次调用） */
+	UFUNCTION(BlueprintCallable, Category = "Warrior|UI")
+	void BindAttributeViewModelToWidgetComponents();
+
+	/** 控制本角色的本地玩家序号（0 = P1，1 = P2）；无本地玩家控制时按场景中角色顺序 */
+	UFUNCTION(BlueprintPure, Category = "Warrior")
+	int32 GetPlayerIndex() const;
+
 	// ---- 表现层回调（蓝图实现：播放蒙太奇/特效/音效）----
 
 	/** 请求播放某一段攻击（蓝图负责根据段数选择并播放蒙太奇） */
@@ -95,6 +108,9 @@ protected:
 	/** 连招组件 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Warrior|Components")
 	TObjectPtr<UComboComponent> ComboComponent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBlueBattleAttributeViewModel> AttributeViewModel;
 
 	/** 闪避冷却（秒） */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Warrior|Combat")
