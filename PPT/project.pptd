@@ -1,4 +1,4 @@
-title: 双人对战小游戏 - 虚幻引擎项目展示
+title: BlueBattle — 3D 双人格斗对战游戏
 size: [1280, 720]
 theme:
   colors:
@@ -10,8 +10,6 @@ theme:
     card: "#1E293B"
     border: "#334155"
     highlight: "#38BDF8"
-    danger: "#EF4444"
-    success: "#22C55E"
   textStyles:
     title:
       fontSize: 32
@@ -38,36 +36,20 @@ theme:
       color: "$accent"
       fontFamily: "Liter, MiSans"
       lineHeight: 1.4
-  tableStyles:
-    default:
-      fontSize: 16
-      fontFamily: "Liter, MiSans"
-      headerFill: "$primary"
-      headerColor: "#FFFFFF"
-      headerBold: true
-      bodyFill: ["$card", "$background"]
-      bodyColor: "$text"
-      border:
-        style: solid
-        width: 1
-        color: "$border"
 pages:
-  - pages/cover.page
-  - pages/toc.page
-  - pages/chapter1.page
-  - pages/features.page
-  - pages/scene.page
-  - pages/chapter2.page
-  - pages/architecture.page
-  - pages/modules.page
-  - pages/raycast.page
-  - pages/chapter3.page
-  - pages/phong.page
-  - pages/bvh.page
-  - pages/chapter4.page
-  - pages/rendering.page
-  - pages/chapter5.page
-  - pages/animation.page
-  - pages/chapter6.page
-  - pages/learning.page
-  - pages/final.page
+  # 结构对齐 outline.md：项目概述 → 四大技术亮点 → 架构细节 → 总结
+  - cover
+  - toc
+  - chapter-overview
+  - project-intro
+  - chapter-highlights
+  - highlights-overview
+  - mass-actorcomponent
+  - gamemode-experience
+  - ui-commonui-mvvm
+  - melee-sweep
+  - chapter-architecture
+  - combat-dataflow
+  - chapter-summary
+  - summary
+  - final

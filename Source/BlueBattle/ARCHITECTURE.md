@@ -2,6 +2,15 @@
 
 > 本文档面向代码评审 / 简历讲解，说明本项目从「纯蓝图逻辑」向「C++ 核心 + 蓝图表现」演进的架构设计、模块职责与关键取舍。
 
+## 0. 技术亮点（简历对齐）
+
+基于 UE5 独立完成客户端全流程开发，支持本地双人对战。
+
+- **Mass 与 ActorComponent 结合**：采用「数据-表现分离」架构，数据层由 MassEntity 管理，表现层由 Actor 及其组件负责，通过 `UMassAgentComponent` 绑定，由 Translator 将 Fragment 数据单向同步至 ActorComponent。
+- **GameMode 优化**：基于 Lyra 框架，用 Experience + GameFeature 替代传统 GameMode 硬编码，实现玩法模块化与按需加载。
+- **系统架构**：采用 CommonUI + LyraUI，结合 UnLua 与蓝图实现业务页面与局内 HUD；角色属性 HUD 采用 MVVM 架构。
+- **近战判定优化**：基于 AnimNotifyState 定义攻击检测窗口，每帧记录武器 Socket 的上一帧与当前帧位置做 Sweep Trace，解决高速攻击时帧间位移过大导致的漏检，并做命中去重避免同一次挥击重复结算。
+
 ## 1. 一句话概述
 
 把角色的**核心玩法逻辑（属性、命中、连招/爆气状态机、对局判定）用 C++ 组件化实现**，蓝图只保留**表现层**（蒙太奇、特效、音效、UI、输入映射）。C++ 通过 `UPROPERTY / UFUNCTION / 委托(Delegate)` 暴露给蓝图，形成清晰的「逻辑在 C++、表现在蓝图」边界。
