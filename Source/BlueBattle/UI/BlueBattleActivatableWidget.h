@@ -5,6 +5,7 @@
 #include "CommonActivatableWidget.h"
 #include "Engine/DataTable.h"
 #include "Input/UIActionBindingHandle.h"
+#include "UnLuaInterface.h"
 
 #include "BlueBattleActivatableWidget.generated.h"
 
@@ -21,12 +22,16 @@ enum class EBlueBattleWidgetInputMode : uint8
 
 // An activatable widget that automatically drives the desired input config when activated
 UCLASS(Abstract, Blueprintable)
-class BLUEBATTLE_API UBlueBattleActivatableWidget : public UCommonActivatableWidget
+class BLUEBATTLE_API UBlueBattleActivatableWidget : public UCommonActivatableWidget, public IUnLuaInterface
 {
 	GENERATED_BODY()
 
 public:
 	UBlueBattleActivatableWidget(const FObjectInitializer& ObjectInitializer);
+
+	//~IUnLuaInterface
+	virtual FString GetModuleName_Implementation() const override { return LuaModuleName; }
+	//~End of IUnLuaInterface
 	
 public:
 	
@@ -67,6 +72,10 @@ protected:
 	/** 激活时获得焦点的子控件名（手柄导航起点）；蓝图实现了 GetDesiredFocusTarget 时以蓝图为准 */
 	UPROPERTY(EditDefaultsOnly, Category = Input)
 	FName DesiredFocusWidgetName;
+
+	/** 绑定的 Lua 模块（相对 Content/Script，如 UI.W_MenuScreen），为空则不绑定；蓝图自己实现 GetModuleName 时以蓝图为准 */
+	UPROPERTY(EditDefaultsOnly, Category = "Lua")
+	FString LuaModuleName;
 
 	/** 激活期间暂停游戏（暂停菜单） */
 	UPROPERTY(EditDefaultsOnly, Category = "BlueBattle|UI")

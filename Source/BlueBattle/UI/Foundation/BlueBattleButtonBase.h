@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CommonButtonBase.h"
+#include "UnLuaInterface.h"
 
 #include "BlueBattleButtonBase.generated.h"
 
@@ -10,13 +11,22 @@ class UObject;
 struct FFrame;
 
 UCLASS(Abstract, BlueprintType, Blueprintable)
-class UBlueBattleButtonBase : public UCommonButtonBase
+class BLUEBATTLE_API UBlueBattleButtonBase : public UCommonButtonBase, public IUnLuaInterface
 {
 	GENERATED_BODY()
 
 public:
 	UFUNCTION(BlueprintCallable)
 	void SetButtonText(const FText& InText);
+
+	//~IUnLuaInterface
+	virtual FString GetModuleName_Implementation() const override { return LuaModuleName; }
+	//~End of IUnLuaInterface
+
+protected:
+	/** 绑定的 Lua 模块（相对 Content/Script，如 UI.W_Button1），为空则不绑定 */
+	UPROPERTY(EditDefaultsOnly, Category = "Lua")
+	FString LuaModuleName;
 	
 protected:
 	// UUserWidget interface
