@@ -10,9 +10,10 @@ local M = UnLua.Class()
 local DURATION = 5.0
 
 function M:BP_OnActivated()
-    self.Load:SetVisibility(UE.ESlateVisibility.Visible)
+    -- 控件不能叫 Load：UnLua 的 UObject.Load 会先于控件变量被查到
+    self.LoadingIcon:SetVisibility(UE.ESlateVisibility.Visible)
     UIFlow.RunAfter(self, DURATION, function()
-        self.Load:SetVisibility(UE.ESlateVisibility.Hidden)
+        self.LoadingIcon:SetVisibility(UE.ESlateVisibility.Hidden)
         UIFlow.OpenLevel(self, UIFlow.Levels.Battle)
     end)
 end

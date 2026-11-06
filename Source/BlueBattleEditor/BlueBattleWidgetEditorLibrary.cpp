@@ -7,6 +7,7 @@
 #include "Components/PanelSlot.h"
 #include "Components/PanelWidget.h"
 #include "Editor.h"
+#include "Framework/Application/SlateApplication.h"
 #include "Kismet2/BlueprintEditorUtils.h"
 #include "MVVMBlueprintView.h"
 #include "MVVMBlueprintViewBinding.h"
@@ -353,4 +354,29 @@ void UBlueBattleWidgetEditorLibrary::MarkStructurallyModified(UWidgetBlueprint* 
 	{
 		FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(WidgetBlueprint);
 	}
+}
+
+bool UBlueBattleWidgetEditorLibrary::SimulateMouseMoveToWidget(UWidget* Widget)
+{
+	if (!Widget || !FSlateApplication::IsInitialized())
+	{
+		return false;
+	}
+
+	const FGeometry& Geometry = Widget->GetCachedGeometry();
+	const FVector2D Target = Geometry.LocalToAbsolute(Geometry.GetLocalSize() * 0.5f);
+
+	FSlateApplication& SlateApp = FSlateApplication::Get();
+	const FPointerEvent MouseEvent(
+		SlateApp.GetUserIndexForMouse(),
+		FSlateApplicationBase::CursorPointerIndex,
+		Target,
+		SlateApp.GetLastCursorPos(),
+		SlateApp.GetPressedMouseButtons(),
+		EKeys::Invalid,
+		0.f,
+		SlateApp.GetPlatformApplication()->GetModifierKeys());
+	SlateApp.ProcessMouseMoveEvent(MouseEvent);
+
+	return Widget->IsHovered();
 }

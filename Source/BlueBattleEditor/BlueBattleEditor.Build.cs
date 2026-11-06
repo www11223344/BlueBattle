@@ -12,6 +12,9 @@ public class BlueBattleEditor : ModuleRules
 
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
+			"InputCore",
+			"Slate",
+			"SlateCore",
 			"UMG",
 			"UMGEditor",
 			"UnrealEd",

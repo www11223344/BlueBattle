@@ -22,6 +22,7 @@ function M:Construct()
     self.bHovered = false
     self.bFocused = false
     self.bPressed = false
+    self.bUsingGamepad = UE.UCommonUIExtensions.IsOwningPlayerUsingGamepad(self)
     self:RefreshVisualState()
 end
 
@@ -29,7 +30,7 @@ function M:RefreshVisualState()
     local State = "Normal"
     if self.bPressed then
         State = "Pressed"
-    elseif self.bHovered or self.bFocused then
+    elseif self.bHovered or (self.bFocused and self.bUsingGamepad) then
         State = "Hovered"
     end
     if self.VisualState == State then
@@ -45,16 +46,25 @@ function M:RefreshVisualState()
         Inner:SetStyle(Style)
     end
 
+    -- 蓝图变量名带空格，只能用字符串下标访问
+    local BaseColor = self["Base Color"]
+    local HoverColor = self["Hover Color"]
+    local PressedColor = self["Pressed Color"]
     local Label = self.Text
-    if Label and self.BaseColor then
-        local Color = self.BaseColor
-        if State == "Hovered" and self.HoverColor then
-            Color = self.HoverColor
+    if Label and BaseColor then
+        local Color = BaseColor
+        if State == "Hovered" then
+            Color = HoverColor or BaseColor
         elseif State == "Pressed" then
-            Color = self.PressedColor or self.HoverColor or self.BaseColor
+            Color = PressedColor or HoverColor or BaseColor
         end
         Label:SetColorAndOpacity(Color)
     end
+end
+
+function M:BP_OnInputMethodChanged(CurrentInputType)
+    self.bUsingGamepad = CurrentInputType == UE.ECommonInputType.Gamepad
+    self:RefreshVisualState()
 end
 
 function M:BP_OnHovered()

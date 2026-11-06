@@ -74,4 +74,8 @@ public:
 	/** 层级修改后标记蓝图结构变化（编译前调用） */
 	UFUNCTION(BlueprintCallable, Category = "BlueBattle|WidgetEditor")
 	static void MarkStructurallyModified(UWidgetBlueprint* WidgetBlueprint);
+
+	/** 向 Slate 发送一次鼠标移动到运行中控件中心的事件（PIE 下测试悬停用），返回控件当前是否处于悬停 */
+	UFUNCTION(BlueprintCallable, Category = "BlueBattle|WidgetEditor")
+	static bool SimulateMouseMoveToWidget(UWidget* Widget);
 };
