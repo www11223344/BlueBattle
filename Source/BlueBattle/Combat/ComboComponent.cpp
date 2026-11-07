@@ -1,35 +1,30 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Combat/ComboComponent.h"
+#include "Animation/AnimMontage.h"
+#include "BlueBattleLogChannels.h"
 #include "Combat/AttributeComponent.h"
+#include "Engine/World.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "Engine/World.h"
-#include "TimerManager.h"
+#include "Mass/BlueBattleMassFragments.h"
+#include "Mass/BlueBattleUnitSubsystem.h"
 
 UComboComponent::UComboComponent()
 {
-	PrimaryComponentTick.bCanEverTick = false;
+	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bStartWithTickEnabled = false;
 }
 
-void UComboComponent::BeginPlay()
+UBlueBattleUnitSubsystem* UComboComponent::GetUnitSubsystemForWrite(const TCHAR* Operation) const
 {
-	Super::BeginPlay();
-
-	ComboCount = 0;
-	bIsAttacking = false;
-	bEvasion = false;
-	bExplosion = false;
-	bComboWindowOpen = false;
-}
-
-UAttributeComponent* UComboComponent::GetAttribute() const
-{
-	if (const AActor* Owner = GetOwner())
+	UBlueBattleUnitSubsystem* UnitSubsystem = GetWorld() ? GetWorld()->GetSubsystem<UBlueBattleUnitSubsystem>() : nullptr;
+	if (!MassEntity.IsSet() || !UnitSubsystem)
 	{
-		return Owner->FindComponentByClass<UAttributeComponent>();
+		UE_LOG(LogBlueBattle, Warning, TEXT("%s: %s ignored, Mass entity not bound yet"), *GetNameSafe(GetOwner()), Operation);
+		return nullptr;
 	}
-	return nullptr;
+	return UnitSubsystem;
 }
 
 void UComboComponent::PerformLightAttack()
@@ -44,112 +39,138 @@ void UComboComponent::PerformHeavyAttack()
 
 void UComboComponent::PerformAttack(EAttackType AttackType)
 {
-	// 死亡时不允许攻击
-	if (const UAttributeComponent* Attr = GetAttribute())
+	UBlueBattleUnitSubsystem* UnitSubsystem = GetUnitSubsystemForWrite(TEXT("PerformAttack"));
+	int32 ComboStep = 0;
+	bool bEX = false;
+	UAnimMontage* Skill = nullptr;
+	if (UnitSubsystem && UnitSubsystem->TryStartAttack(MassEntity, AttackType, ComboStep, bEX, Skill))
 	{
-		if (Attr->fIsDead())
-		{
-			return;
-		}
+		OnPlayAttackMontage(AttackType, bEX, ComboStep, Skill);
 	}
-
-	// 进入攻击状态、清除闪避（对应蓝图 攻击 / EX 内联分支）
-	bEvasion = false;
-	bIsAttacking = true;
-
-	// 交给表现层选择并播放对应蒙太奇（普通 or EX 由 bExplosion 决定）+ 音效 + 记录当前技能
-	OnPlayAttackMontage(AttackType, bExplosion, ComboCount);
-
-	// 计数递增（表现层用 ComboCount % 数组长度 取段）
-	++ComboCount;
-
-	OnComboStepChanged.Broadcast(ComboCount, AttackType);
 }
 
-void UComboComponent::PerformDodge()
+float UComboComponent::ReportHit(AActor* Target)
 {
-	if (const UAttributeComponent* Attr = GetAttribute())
+	const UAttributeComponent* TargetAttributes = Target ? Target->FindComponentByClass<UAttributeComponent>() : nullptr;
+	if (!TargetAttributes || Target == GetOwner())
 	{
-		if (Attr->fIsDead())
-		{
-			return;
-		}
+		return 0.f;
 	}
 
-	// 闪避打断攻击（对应蓝图 闪避：SetAttacking=false）
-	bIsAttacking = false;
+	UBlueBattleUnitSubsystem* UnitSubsystem = GetUnitSubsystemForWrite(TEXT("ReportHit"));
+	return UnitSubsystem ? UnitSubsystem->ResolveHit(MassEntity, TargetAttributes->GetMassEntity(), GetOwner()) : 0.f;
+}
 
-	// 交给蓝图按朝向选择并播放闪避蒙太奇
-	OnPlayDodgeMontage();
-
-	bEvasion = true;
+bool UComboComponent::PerformDodge()
+{
+	UBlueBattleUnitSubsystem* UnitSubsystem = GetUnitSubsystemForWrite(TEXT("PerformDodge"));
+	if (UnitSubsystem && UnitSubsystem->TryStartDodge(MassEntity))
+	{
+		OnPlayDodgeMontage();
+		return true;
+	}
+	return false;
 }
 
 void UComboComponent::ActivateBurst()
 {
-	// 已在爆气中则忽略
-	if (bExplosion)
+	if (UBlueBattleUnitSubsystem* UnitSubsystem = GetUnitSubsystemForWrite(TEXT("ActivateBurst")))
 	{
-		return;
+		UnitSubsystem->TryActivateBurst(MassEntity);
 	}
-
-	UAttributeComponent* Attr = GetAttribute();
-	if (!Attr || !Attr->fCanEX())
-	{
-		return;
-	}
-
-	// 消耗能量
-	Attr->ConsumeEnergyValue(BurstEnergyCost);
-
-	// 进入爆气：提升移动速度（对应蓝图 SetMaxWalkSpeed 600）
-	bExplosion = true;
-	if (ACharacter* OwnerChar = Cast<ACharacter>(GetOwner()))
-	{
-		if (UCharacterMovementComponent* Move = OwnerChar->GetCharacterMovement())
-		{
-			Move->MaxWalkSpeed = BurstMoveSpeed;
-		}
-	}
-
-	OnBurstStateChanged.Broadcast(true);
-
-	// N 秒后自动结束（对应蓝图 Delay 15s）
-	if (UWorld* World = GetWorld())
-	{
-		World->GetTimerManager().SetTimer(BurstTimerHandle, this, &UComboComponent::EndBurst, BurstDuration, false);
-	}
-}
-
-void UComboComponent::EndBurst()
-{
-	bExplosion = false;
-	if (ACharacter* OwnerChar = Cast<ACharacter>(GetOwner()))
-	{
-		if (UCharacterMovementComponent* Move = OwnerChar->GetCharacterMovement())
-		{
-			Move->MaxWalkSpeed = NormalMoveSpeed;
-		}
-	}
-
-	OnBurstStateChanged.Broadcast(false);
 }
 
 void UComboComponent::EndAttack()
 {
-	bIsAttacking = false;
+	if (UBlueBattleUnitSubsystem* UnitSubsystem = GetUnitSubsystemForWrite(TEXT("EndAttack")))
+	{
+		UnitSubsystem->EndAttack(MassEntity);
+	}
+}
+
+void UComboComponent::EndDodge()
+{
+	if (UBlueBattleUnitSubsystem* UnitSubsystem = GetUnitSubsystemForWrite(TEXT("EndDodge")))
+	{
+		UnitSubsystem->EndDodge(MassEntity);
+	}
 }
 
 void UComboComponent::ResetCombo()
 {
-	if (ComboCount == 0 && !bIsAttacking && !bEvasion)
+	if (UBlueBattleUnitSubsystem* UnitSubsystem = GetUnitSubsystemForWrite(TEXT("ResetCombo")))
 	{
-		return;
+		UnitSubsystem->ResetCombo(MassEntity);
+	}
+}
+
+void UComboComponent::OpenComboWindow()
+{
+	if (UBlueBattleUnitSubsystem* UnitSubsystem = GetUnitSubsystemForWrite(TEXT("OpenComboWindow")))
+	{
+		UnitSubsystem->SetComboWindowOpen(MassEntity, true);
+	}
+}
+
+void UComboComponent::CloseComboWindow()
+{
+	if (UBlueBattleUnitSubsystem* UnitSubsystem = GetUnitSubsystemForWrite(TEXT("CloseComboWindow")))
+	{
+		UnitSubsystem->SetComboWindowOpen(MassEntity, false);
+	}
+}
+
+void UComboComponent::ExportToMass(FBlueBattleComboParamsFragment& OutParams, FBlueBattleSkillSetFragment& OutSkillSet) const
+{
+	OutParams.BurstDuration = BurstDuration;
+	OutParams.BurstEnergyCost = BurstEnergyCost;
+	OutParams.DodgeCooldown = DodgeCooldown;
+
+	OutSkillSet.LightAttacks = LightAttackSkills;
+	OutSkillSet.HeavyAttacks = HeavyAttackSkills;
+	OutSkillSet.EXLightAttacks = EXLightAttackSkills;
+	OutSkillSet.EXHeavyAttacks = EXHeavyAttackSkills;
+	OutSkillSet.SkillDamage = SkillDamageTable;
+}
+
+void UComboComponent::ApplyMassSnapshot(const FBlueBattleComboFragment& Combo, bool bBursting)
+{
+	const int32 PreviousComboCount = ComboCount;
+	const bool bWasBursting = bExplosion;
+
+	ComboCount = Combo.ComboIndex;
+	bIsAttacking = Combo.bAttacking;
+	bEvasion = Combo.bEvasion;
+	bComboWindowOpen = Combo.bComboWindowOpen;
+	bExplosion = bBursting;
+
+	if (ComboCount != PreviousComboCount)
+	{
+		if (ComboCount == 0)
+		{
+			OnComboReset.Broadcast();
+		}
+		else
+		{
+			OnComboStepChanged.Broadcast(ComboCount, Combo.LastAttackType);
+		}
 	}
 
-	ComboCount = 0;
-	bIsAttacking = false;
-	bEvasion = false;
-	bComboWindowOpen = false;
-	OnComboReset.Broadcast();
+	if (bBursting != bWasBursting)
+	{
+		ApplyMoveSpeed(bBursting);
+		SetComponentTickEnabled(bBursting);
+		OnBurstStateChanged.Broadcast(bBursting);
+	}
+}
+
+void UComboComponent::ApplyMoveSpeed(bool bBursting) const
+{
+	if (const ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner()))
+	{
+		if (UCharacterMovementComponent* Movement = OwnerCharacter->GetCharacterMovement())
+		{
+			Movement->MaxWalkSpeed = bBursting ? BurstMoveSpeed : NormalMoveSpeed;
+		}
+	}
 }

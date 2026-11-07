@@ -119,6 +119,10 @@
 		{
 			"Name": "Synthesis",
 			"Enabled": true
+		},
+		{
+			"Name": "MassGameplay",
+			"Enabled": true
 		}
 	]
 }

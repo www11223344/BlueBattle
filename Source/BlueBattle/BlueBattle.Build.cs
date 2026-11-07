@@ -32,7 +32,13 @@ public class BlueBattle : ModuleRules
 			"UIExtension",
 			"GameplayMessageRuntime",
 			"AsyncMixin",
-			"UnLua"
+			"UnLua",
+			"MassCore",
+			"MassEntity",
+			"MassCommon",
+			"MassActors",
+			"MassSpawner",
+			"MassSimulation"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]

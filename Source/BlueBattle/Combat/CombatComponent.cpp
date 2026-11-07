@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Combat/CombatComponent.h"
-#include "Combat/AttributeComponent.h"
+#include "Combat/ComboComponent.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/Pawn.h"
 #include "Engine/World.h"
@@ -20,10 +20,9 @@ void UCombatComponent::BeginPlay()
 	Super::BeginPlay();
 }
 
-void UCombatComponent::BeginAttackWindow(float DamageMultiplier)
+void UCombatComponent::BeginAttackWindow()
 {
 	bAttackWindowOpen = true;
-	CurrentDamageMultiplier = DamageMultiplier;
 	HitActorsThisWindow.Reset();
 	SetComponentTickEnabled(true);
 }
@@ -86,11 +85,10 @@ void UCombatComponent::PerformHitDetection()
 		return;
 	}
 
-	// 拿到发起者攻击力（如果有 AttributeComponent）
-	float AttackPower = 20.f;
-	if (const UAttributeComponent* MyAttr = Owner->FindComponentByClass<UAttributeComponent>())
+	UComboComponent* Combo = Owner->FindComponentByClass<UComboComponent>();
+	if (!Combo)
 	{
-		AttackPower = MyAttr->GetAttackPower();
+		return;
 	}
 
 	for (const FHitResult& Hit : Hits)
@@ -102,14 +100,6 @@ void UCombatComponent::PerformHitDetection()
 		}
 
 		HitActorsThisWindow.Add(HitActor);
-
-		float DamageDealt = 0.f;
-		if (UAttributeComponent* TargetAttr = HitActor->FindComponentByClass<UAttributeComponent>())
-		{
-			const float RawDamage = AttackPower * CurrentDamageMultiplier;
-			DamageDealt = TargetAttr->ApplyDamage(RawDamage, Owner);
-		}
-
-		OnHitTarget.Broadcast(HitActor, DamageDealt, Hit);
+		OnHitTarget.Broadcast(HitActor, Combo->ReportHit(HitActor), Hit);
 	}
 }

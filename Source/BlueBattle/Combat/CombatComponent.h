@@ -6,11 +6,11 @@
 #include "Components/ActorComponent.h"
 #include "CombatComponent.generated.h"
 
-/** 命中目标时广播：被击中的 Actor / 实际造成的伤害 / 命中结果。 */
+/** 命中目标时广播：被击中的 Actor / 实际造成的伤害（无效命中为 0）/ 命中结果。 */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnHitTarget, AActor*, HitActor, float, DamageDealt, const FHitResult&, HitResult);
 
 /**
- * 战斗组件：负责攻击窗口开关、射线/扫掠命中检测与伤害传递。
+ * 战斗组件：负责攻击窗口开关与扫掠命中检测，命中经 UComboComponent::ReportHit 交给数据层结算。
  * 由 AnimNotifyState 在攻击动画的判定帧调用 BeginAttackWindow / EndAttackWindow。
  */
 UCLASS(ClassGroup = (BlueBattle), meta = (BlueprintSpawnableComponent))
@@ -27,9 +27,9 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Combat|Events")
 	FOnHitTarget OnHitTarget;
 
-	/** 开启攻击判定窗口。DamageMultiplier 来自当前连招段。 */
+	/** 开启攻击判定窗口。 */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
-	void BeginAttackWindow(float DamageMultiplier = 1.f);
+	void BeginAttackWindow();
 
 	/** 关闭攻击判定窗口。 */
 	UFUNCTION(BlueprintCallable, Category = "Combat")
@@ -63,9 +63,6 @@ protected:
 private:
 	/** 攻击窗口是否开启 */
 	bool bAttackWindowOpen = false;
-
-	/** 当前段的伤害倍率 */
-	float CurrentDamageMultiplier = 1.f;
 
 	/** 本次攻击窗口内已命中的 Actor，避免单次挥击重复扣血 */
 	UPROPERTY()

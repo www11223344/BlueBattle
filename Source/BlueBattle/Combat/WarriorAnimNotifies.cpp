@@ -14,7 +14,7 @@ void UAnimNotifyState_AttackWindow::NotifyBegin(USkeletalMeshComponent* MeshComp
 	{
 		if (UCombatComponent* Combat = MeshComp->GetOwner()->FindComponentByClass<UCombatComponent>())
 		{
-			Combat->BeginAttackWindow(DamageMultiplier);
+			Combat->BeginAttackWindow();
 		}
 	}
 }

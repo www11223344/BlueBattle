@@ -18,10 +18,6 @@ class BLUEBATTLE_API UAnimNotifyState_AttackWindow : public UAnimNotifyState
 public:
 	virtual void NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, float TotalDuration, const FAnimNotifyEventReference& EventReference) override;
 	virtual void NotifyEnd(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference) override;
-
-	/** 该段攻击伤害倍率 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
-	float DamageMultiplier = 1.f;
 };
 
 /**
