@@ -2,6 +2,8 @@
 
 #include "BlueBattleUIManagerSubsystem.h"
 
+#include "BlueBattleGameplayTags.h"
+#include "CommonActivatableWidget.h"
 #include "CommonLocalPlayer.h"
 #include "Engine/GameInstance.h"
 #include "GameFramework/HUD.h"
@@ -28,6 +30,49 @@ void UBlueBattleUIManagerSubsystem::Deinitialize()
 	Super::Deinitialize();
 
 	FTSTicker::GetCoreTicker().RemoveTicker(TickHandle);
+}
+
+void UBlueBattleUIManagerSubsystem::OpenPauseMenu(const ULocalPlayer* LocalPlayer)
+{
+	const UCommonLocalPlayer* CommonLocalPlayer = Cast<UCommonLocalPlayer>(LocalPlayer);
+	const UGameUIPolicy* Policy = GetCurrentUIPolicy();
+	UPrimaryGameLayout* RootLayout = Policy && CommonLocalPlayer ? Policy->GetRootLayout(CommonLocalPlayer) : nullptr;
+	if (!RootLayout || !ensure(!PauseMenuClass.IsNull()) || IsPauseMenuOpen(LocalPlayer))
+	{
+		return;
+	}
+
+	const TWeakObjectPtr<const ULocalPlayer> PlayerKey(LocalPlayer);
+	PauseMenus.Add(PlayerKey, nullptr);
+
+	const bool bSuspendInputUntilComplete = true;
+	RootLayout->PushWidgetToLayerStackAsync<UCommonActivatableWidget>(BlueBattleGameplayTags::UI_Layer_Menu, bSuspendInputUntilComplete, PauseMenuClass,
+		[this, PlayerKey](EAsyncWidgetLayerState State, UCommonActivatableWidget* Widget)
+		{
+			if (State == EAsyncWidgetLayerState::AfterPush && Widget)
+			{
+				PauseMenus.Add(PlayerKey, Widget);
+			}
+			else if (State == EAsyncWidgetLayerState::Canceled)
+			{
+				PauseMenus.Remove(PlayerKey);
+			}
+		});
+}
+
+bool UBlueBattleUIManagerSubsystem::IsPauseMenuOpen(const ULocalPlayer* LocalPlayer) const
+{
+	const TWeakObjectPtr<UCommonActivatableWidget>* PauseMenu = PauseMenus.Find(LocalPlayer);
+	if (!PauseMenu)
+	{
+		return false;
+	}
+	if (PauseMenu->IsExplicitlyNull())
+	{
+		return true;
+	}
+	const UCommonActivatableWidget* Widget = PauseMenu->Get();
+	return Widget && Widget->IsActivated();
 }
 
 bool UBlueBattleUIManagerSubsystem::Tick(float DeltaTime)

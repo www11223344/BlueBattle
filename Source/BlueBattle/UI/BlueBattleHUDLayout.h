@@ -10,6 +10,7 @@
 
 class UCommonActivatableWidget;
 class UObject;
+class UWidget;
 class UBlueBattleControllerDisconnectedScreen;
 
 /**
@@ -28,9 +29,17 @@ public:
 
 	virtual void NativeOnInitialized() override;
 	virtual void NativeDestruct() override;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 protected:
 	void HandleEscapeAction();
+
+	/** 根布局覆盖整个视口时，把 PlayerScreenRegion 收缩到所属本地玩家的分屏区域 */
+	void UpdatePlayerScreenRegion(const FGeometry& MyGeometry);
+
+	/** 只覆盖所属玩家分屏区域的容器（须放在 Overlay 中），放置每个玩家各自的 HUD 元素插槽 */
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> PlayerScreenRegion;
 	
 	/** 
 	* Callback for when controllers are disconnected. This will check if the player now has 
@@ -76,12 +85,6 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, Category="Controller Disconnect Menu")
 	void HideControllerDisconnectedMenu();
 	
-	/**
-	 * The menu to be displayed when the user presses the "Pause" or "Escape" button 
-	 */
-	UPROPERTY(EditDefaultsOnly)
-	TSoftClassPtr<UCommonActivatableWidget> EscapeMenuClass;
-
 	/** 
 	* The widget which should be presented to the user if all of their controllers are disconnected.
 	*/
@@ -100,7 +103,6 @@ protected:
 	/** Pointer to the active "Controller Disconnected" menu if there is one. */
 	UPROPERTY(Transient)
 	TObjectPtr<UCommonActivatableWidget> SpawnedControllerDisconnectScreen;
-
 	/** Handle from the FSTicker for when we want to process the controller state of our player */
 	FTSTicker::FDelegateHandle RequestProcessControllerStateHandle;
 };

@@ -45,7 +45,11 @@
 | 战斗组件 | `Combat/CombatComponent.h/.cpp` | 可选的扫掠命中检测，命中经 `ReportHit` 交给数据层结算 |
 | 动画通知 | `Combat/WarriorAnimNotifies.h/.cpp` | `Attack Window` / `Combo Window` 两个 `AnimNotifyState` |
 | 属性 ViewModel | `UI/ViewModels/BlueBattleAttributeViewModel.h/.cpp` | MVVM：订阅属性组件委托，驱动头顶血条 / HUD |
+| 爆气 ViewModel | `UI/ViewModels/BlueBattleBurstViewModel.h/.cpp` | MVVM：订阅能量 / 死亡 / 爆气状态，输出可否爆气的文本与颜色；驱动 `W_BurstIndicator`（Battle Experience 的 AddWidgets 注册到 `HUD.Slot.BurstIndicator` 插槽；该插槽在 HUD 布局的 `PlayerScreenRegion` 内，由 `UBlueBattleHUDLayout` 收缩到所属玩家的分屏区域） |
 | 对局模式 | `Core/BlueBattleGameMode.h/.cpp` | 监听死亡、判定胜负、广播 `OnMatchEnded` |
+| 调试指令 | `Debug/BlueBattleDebugCommands.h/.cpp` | `BB.SetHP` / `BB.SetDamage` 等控制台命令（非 Shipping），经子系统写入数据层 |
+| UI 管理子系统 | `UI/Subsystem/BlueBattleUIManagerSubsystem.h/.cpp` | 持有 UI Policy；`OpenPauseMenu` 把 `PauseMenuClass`（DefaultGame.ini）推入玩家的 `UI.Layer.Menu`，防重复打开；HUD 布局的 Esc 只调用它 |
+| 调试窗口 | `UI/Debug/BlueBattleDebugWindow.h/.cpp` | 与 Lyra HUD 元素相同的挂载方式：Battle Experience 的 AddWidgets 把 `UBlueBattleDebugHUDEntry` 注册到 HUD 布局的 `HUD.Slot.Debug` 插槽，按 K 开关；P1 / P2 分栏显示生命 / 伤害并执行调试指令 |
 
 ### 2.3 蓝图
 

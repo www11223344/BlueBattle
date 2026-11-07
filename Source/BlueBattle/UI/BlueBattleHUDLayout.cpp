@@ -10,9 +10,12 @@
 #include "Input/CommonUIInputTypes.h"
 #include "ICommonUIModule.h"
 #include "BlueBattleLogChannels.h"
+#include "Components/OverlaySlot.h"
+#include "Engine/LocalPlayer.h"
 #include "NativeGameplayTags.h"
 #include "UI/Foundation/BlueBattleControllerDisconnectedScreen.h"
 #include "UI/BlueBattleActivatableWidget.h"
+#include "UI/Subsystem/BlueBattleUIManagerSubsystem.h"
 
 #if WITH_EDITOR
 #include "CommonUIVisibilitySubsystem.h"
@@ -40,7 +43,6 @@ void UBlueBattleHUDLayout::NativeOnInitialized()
 	// 绑定默认只在 Menu 模式响应，而 HUD 布局激活时的输入模式是 Game（All 也不匹配 Game）
 	EscapeActionArgs.InputMode = ECommonInputMode::Game;
 	RegisterUIActionBinding(EscapeActionArgs);
-
 	// If we can display a controller disconnect screen, then listen for the controller state change delegates
 	if (ShouldPlatformDisplayControllerDisconnectScreen())
 	{
@@ -67,11 +69,43 @@ void UBlueBattleHUDLayout::NativeDestruct()
 	}
 }
 
+void UBlueBattleHUDLayout::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+
+	UpdatePlayerScreenRegion(MyGeometry);
+}
+
+void UBlueBattleHUDLayout::UpdatePlayerScreenRegion(const FGeometry& MyGeometry)
+{
+	const ULocalPlayer* LocalPlayer = GetOwningLocalPlayer();
+	UOverlaySlot* RegionSlot = PlayerScreenRegion ? Cast<UOverlaySlot>(PlayerScreenRegion->Slot) : nullptr;
+	if (!LocalPlayer || !RegionSlot)
+	{
+		return;
+	}
+
+	const FVector2D LayoutSize = MyGeometry.GetLocalSize();
+	const FVector2D Origin = LocalPlayer->Origin;
+	const FVector2D Size = LocalPlayer->Size;
+	const FMargin Padding(
+		static_cast<float>(Origin.X * LayoutSize.X),
+		static_cast<float>(Origin.Y * LayoutSize.Y),
+		static_cast<float>(FMath::Max(0.0, 1.0 - Origin.X - Size.X) * LayoutSize.X),
+		static_cast<float>(FMath::Max(0.0, 1.0 - Origin.Y - Size.Y) * LayoutSize.Y));
+
+	if (!(RegionSlot->GetPadding() == Padding))
+	{
+		RegionSlot->SetPadding(Padding);
+	}
+}
+
 void UBlueBattleHUDLayout::HandleEscapeAction()
 {
-	if (ensure(!EscapeMenuClass.IsNull()))
+	const ULocalPlayer* LocalPlayer = GetOwningLocalPlayer();
+	if (UBlueBattleUIManagerSubsystem* UIManager = LocalPlayer ? LocalPlayer->GetGameInstance()->GetSubsystem<UBlueBattleUIManagerSubsystem>() : nullptr)
 	{
-		UCommonUIExtensions::PushStreamedContentToLayer_ForPlayer(GetOwningLocalPlayer(), TAG_UI_LAYER_MENU, EscapeMenuClass);
+		UIManager->OpenPauseMenu(LocalPlayer);
 	}
 }
 

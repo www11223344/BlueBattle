@@ -9,6 +9,11 @@ namespace BlueBattleGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(UI_Layer_Menu, "UI.Layer.Menu", "菜单层（主菜单、暂停、结算）");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(UI_Layer_Modal, "UI.Layer.Modal", "模态层（确认框）");
 
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(UI_Action_DebugWindow, "UI.Action.DebugWindow", "开关局内调试窗口（非 Shipping）");
+
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(HUD_Slot_Debug, "HUD.Slot.Debug", "HUD 布局上的调试窗口插槽");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(HUD_Slot_BurstIndicator, "HUD.Slot.BurstIndicator", "HUD 布局上的爆气提示插槽");
+
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(InitState_Spawned, "InitState.Spawned", "Actor/组件已生成");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(InitState_DataAvailable, "InitState.DataAvailable", "初始化所需数据已就绪");
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(InitState_DataInitialized, "InitState.DataInitialized", "数据已完成初始化");

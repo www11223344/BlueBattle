@@ -7,7 +7,7 @@
 #include "BlueBattleLocalPlayerViewModelResolver.generated.h"
 
 /**
- * MVVM Resolver：为 Widget 创建一个跟随其 Owning LocalPlayer 当前 Pawn 的属性 ViewModel。
+ * MVVM Resolver：为 Widget 创建一个跟随其 Owning LocalPlayer 当前 Pawn 的 ViewModel（属性 / 爆气）。
  * 在 Widget 的 Viewmodels 面板中把 Creation Type 设为 Resolver，并选择本类即可。
  */
 UCLASS(DisplayName = "BlueBattle Local Player Attribute Resolver")

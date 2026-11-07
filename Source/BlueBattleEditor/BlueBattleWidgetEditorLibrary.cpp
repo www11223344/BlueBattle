@@ -92,6 +92,19 @@ UWidget* UBlueBattleWidgetEditorLibrary::GetRootWidget(UWidgetBlueprint* WidgetB
 	return (WidgetBlueprint && WidgetBlueprint->WidgetTree) ? WidgetBlueprint->WidgetTree->RootWidget.Get() : nullptr;
 }
 
+bool UBlueBattleWidgetEditorLibrary::SetRootWidget(UWidgetBlueprint* WidgetBlueprint, UWidget* Widget)
+{
+	if (!WidgetBlueprint || !WidgetBlueprint->WidgetTree || !Widget)
+	{
+		return false;
+	}
+
+	WidgetBlueprint->WidgetTree->Modify();
+	Widget->RemoveFromParent();
+	WidgetBlueprint->WidgetTree->RootWidget = Widget;
+	return true;
+}
+
 UWidget* UBlueBattleWidgetEditorLibrary::FindWidget(UWidgetBlueprint* WidgetBlueprint, FName WidgetName)
 {
 	return (WidgetBlueprint && WidgetBlueprint->WidgetTree) ? WidgetBlueprint->WidgetTree->FindWidget(WidgetName) : nullptr;

@@ -33,6 +33,9 @@ struct FBlueBattleAttributeFragment : public FMassFragment
 	float AttackPower = 5.f;
 	float Defense = 0.f;
 
+	/** 每次命中造成的固定伤害（调试用），覆盖招式表；小于 0 时按招式表 */
+	float DamageOverride = -1.f;
+
 	/** 最近一次造成伤害的 Actor，死亡时作为击杀者广播 */
 	TWeakObjectPtr<AActor> LastDamageCauser;
 

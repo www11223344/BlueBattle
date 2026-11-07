@@ -34,6 +34,12 @@ public:
 
 	void AddEnergy(FMassEntityHandle Entity, float Amount);
 
+	/** 直接设置生命值（调试用）：超过上限时同时抬高上限，设为 0 时标记死亡；已死亡的单位不处理并返回 false。 */
+	bool SetHP(FMassEntityHandle Entity, float NewHP);
+
+	/** 设置该单位每次命中的固定伤害（调试用），小于 0 恢复按招式表结算。 */
+	bool SetDamageOverride(FMassEntityHandle Entity, float Damage);
+
 	const FBlueBattleAttributeFragment* GetAttributes(FMassEntityHandle Entity) const;
 
 	bool IsDead(FMassEntityHandle Entity) const;
@@ -48,7 +54,8 @@ public:
 
 	/**
 	 * 攻击判定命中目标：攻击者存活且处于攻击中、目标为其他存活单位时，
-	 * 以当前招式伤害结算到目标，并为攻击者增加等量能量。返回目标实际损失的生命（未命中为 0）。
+	 * 以当前招式伤害（攻击者设置了 DamageOverride 时以其为准）结算到目标，并为攻击者增加等量能量。
+	 * 返回目标实际损失的生命（未命中为 0）。
 	 */
 	float ResolveHit(FMassEntityHandle Attacker, FMassEntityHandle Target, AActor* DamageCauser);
 

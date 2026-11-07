@@ -107,12 +107,18 @@ bool UBlueBattleUnitSubsystem::TryStartAttack(FMassEntityHandle Entity, EAttackT
 float UBlueBattleUnitSubsystem::ResolveHit(FMassEntityHandle Attacker, FMassEntityHandle Target, AActor* DamageCauser)
 {
 	const FBlueBattleComboFragment* Combo = GetMutableCombo(Attacker);
-	if (!Combo || !Combo->bAttacking || Combo->CurrentSkillDamage <= 0.f || Attacker == Target || IsDead(Attacker) || IsDead(Target))
+	const FBlueBattleAttributeFragment* AttackerAttributes = GetAttributes(Attacker);
+	if (!Combo || !AttackerAttributes || !Combo->bAttacking || Attacker == Target || IsDead(Attacker) || IsDead(Target))
 	{
 		return 0.f;
 	}
 
-	const float SkillDamage = Combo->CurrentSkillDamage;
+	const float SkillDamage = AttackerAttributes->DamageOverride >= 0.f ? AttackerAttributes->DamageOverride : Combo->CurrentSkillDamage;
+	if (SkillDamage <= 0.f)
+	{
+		return 0.f;
+	}
+
 	const float Dealt = ApplyDamage(Target, SkillDamage, DamageCauser);
 	if (Dealt > 0.f)
 	{
@@ -265,4 +271,34 @@ void UBlueBattleUnitSubsystem::AddEnergy(FMassEntityHandle Entity, float Amount)
 		return;
 	}
 	Attributes->Energy = FMath::Clamp(Attributes->Energy + Amount, 0.f, Attributes->MaxEnergy);
+}
+
+bool UBlueBattleUnitSubsystem::SetHP(FMassEntityHandle Entity, float NewHP)
+{
+	FBlueBattleAttributeFragment* Attributes = GetMutableAttributes(Entity);
+	if (!Attributes || IsDead(Entity))
+	{
+		return false;
+	}
+
+	Attributes->MaxHP = FMath::Max(Attributes->MaxHP, NewHP);
+	Attributes->HP = FMath::Clamp(NewHP, 0.f, Attributes->MaxHP);
+	Attributes->LastDamageCauser = nullptr;
+
+	if (Attributes->HP <= 0.f)
+	{
+		MarkDead(Entity);
+	}
+	return true;
+}
+
+bool UBlueBattleUnitSubsystem::SetDamageOverride(FMassEntityHandle Entity, float Damage)
+{
+	FBlueBattleAttributeFragment* Attributes = GetMutableAttributes(Entity);
+	if (!Attributes)
+	{
+		return false;
+	}
+	Attributes->DamageOverride = Damage < 0.f ? -1.f : Damage;
+	return true;
 }

@@ -28,6 +28,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "BlueBattle|WidgetEditor")
 	static UWidget* GetRootWidget(UWidgetBlueprint* WidgetBlueprint);
 
+	/** 设置根控件（WidgetTree 为空时用来放第一个控件）；原根控件不会被删除，需要时先用 RemoveWidget */
+	UFUNCTION(BlueprintCallable, Category = "BlueBattle|WidgetEditor")
+	static bool SetRootWidget(UWidgetBlueprint* WidgetBlueprint, UWidget* Widget);
+
 	UFUNCTION(BlueprintCallable, Category = "BlueBattle|WidgetEditor")
 	static UWidget* FindWidget(UWidgetBlueprint* WidgetBlueprint, FName WidgetName);
 
